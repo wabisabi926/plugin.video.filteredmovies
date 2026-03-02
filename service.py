@@ -17,8 +17,8 @@ if not os.path.exists(ADDON_DATA_PATH):
 
 SKIP_DATA_FILE = os.path.join(ADDON_DATA_PATH, 'skip_intro_data.json')
 
-def log(msg):
-    xbmc.log(f"[FilteredMoviesService] {msg}", xbmc.LOGINFO)
+def log(msg, level=xbmc.LOGINFO):
+    xbmc.log(f"[FilteredMoviesService] {msg}", level)
 
 def warmup_xml_cache():
     try:
@@ -71,6 +71,24 @@ def get_current_tvshow_info():
         log(f"Error getting TV show info: {e}")
     return None, None, None
 
+class TransparentOverlay(xbmcgui.WindowXML):
+    def __init__(self, *args, **kwargs):
+        self.should_close = False
+        self.close_action_id = None
+        xbmcgui.WindowXML.__init__(self, *args, **kwargs)
+
+    def onInit(self):
+        # 窗口初始化后的逻辑
+        pass
+
+    def onAction(self, action):
+        # 收到任何按键操作，关闭自己
+        self.close_action_id = action.getId()
+        log(f"TransparentOverlay received action {self.close_action_id}, scheduling close...")
+        self.should_close = True
+        return
+
+
 class PlayerMonitor(xbmc.Player):
     def __init__(self):
         xbmc.Player.__init__(self)
@@ -78,6 +96,8 @@ class PlayerMonitor(xbmc.Player):
         self.outro_triggered = False
         self.outro_countdown_start = None
         self.cancel_skip = False
+        self.transparent_overlay = None
+        self.last_overlay_close_time = 0
 
     def onAVStarted(self):
         # 视频开始播放（包括切集）时触发
@@ -87,6 +107,180 @@ class PlayerMonitor(xbmc.Player):
         self.check_intro()
         self.update_outro_info()
         self.load_iso_subtitles()
+
+    def get_video_zoom(self):
+        try:
+            json_query = {
+                "jsonrpc": "2.0",
+                "method": "Player.GetViewMode",
+                "id": "Player.GetViewMode"
+            }
+            json_response = xbmc.executeJSONRPC(json.dumps(json_query))
+            response = json.loads(json_response)
+            
+            if 'result' in response and 'zoom' in response['result']:
+                return float(response['result']['zoom'])
+        except Exception as e:
+            pass
+        return 1.0
+
+    def get_screen_aspect_ratio(self):
+        try:
+            # 获取显示设备（屏幕）的实际宽高比，而非视频内容的
+            width = float(xbmc.getInfoLabel('System.ScreenWidth'))
+            height = float(xbmc.getInfoLabel('System.ScreenHeight'))
+            if height > 0:
+                return width / height
+        except Exception as e:
+            pass
+        return 0.0
+
+    def close_transparent_overlay(self):
+        if self.transparent_overlay:
+            try:
+                self.transparent_overlay.close()
+            except Exception as e:
+                log(f"Error closing transparent overlay: {e}", xbmc.LOGERROR)
+            finally:
+                self.transparent_overlay = None
+                log("Transparent filter overlay closed/referenced cleaned", xbmc.LOGDEBUG)
+
+    def check_overlay_visibility(self):
+        if self.transparent_overlay and self.transparent_overlay.should_close:
+            action_id = self.transparent_overlay.close_action_id
+            self.close_transparent_overlay()
+            self.last_overlay_close_time = time.time()
+            
+            current_window_id = xbmcgui.getCurrentWindowId()
+            if current_window_id == 10000:
+                xbmc.executebuiltin("ActivateWindow(fullscreenvideo)")
+            if action_id:
+                # 智能映射：将Action ID映射为实际的 **播放控制命令**
+                # 问题关键：
+                #   当透明遮罩层(Dialog)处于活动状态时，"Right"键产生的Action ID是1/2 (Left/Right)
+                #   而视频播放器(FullscreenVideo)通常只响应20/21 (StepForward/Back)用于快进退
+                #   如果我们转发 "Action(Right)"，全屏播放器会忽略它，因为它期待的是 "StepForward"。
+                # 已知问题，不支持自定以按键映射，只能根据常见的几个按键进行转发
+                action_map = {
+                    1: "stepback",       # Id 1 (Left) -> StepBack
+                    2: "stepforward",    # Id 2 (Right) -> StepForward
+                    3: "bigstepforward", # Id 3 (Up) -> BigStepForward (or ChapterNext)
+                    4: "bigstepback",    # Id 4 (Down) -> BigStepBack
+                    5: "pageup", 
+                    6: "pagedown",
+                    7: "osd",            # Id 7 (Select) -> Show OSD
+                    8: "highlight", 
+                    9: "parentdir", 
+                    10: "back",          # Id 10 (PrevMenu) -> Back
+                    11: "info", 
+                    # 12: "pause", 
+                    13: "stop", 
+                    14: "skipnext", 
+                    15: "skipprevious",
+                    18: "fullscreen", 
+                    19: "aspectratio", 
+                    20: "stepforward", 
+                    21: "stepback",
+                    22: "bigstepforward", 
+                    23: "bigstepback", 
+                    24: "osd", 
+                    25: "showsubtitles",
+                    26: "nextsubtitle", 
+                    36: "fullscreen", 
+                    76: "smallstepback",
+                    77: "fastforward", 
+                    78: "rewind", 
+                    79: "play", 
+                    88: "volumeup", 
+                    89: "volumedown", 
+                    91: "mute", 
+                    92: "back",
+                    # 鼠标支持 (Mouse Support)
+                    100: "leftclick",    # Mouse Left Click
+                    101: "rightclick",   # Mouse Right Click
+                    102: "middleclick",  # Mouse Middle Click
+                    103: "doubleclick",  # Mouse Double Click
+                    104: "wheelup",      # Mouse Wheel Up
+                    105: "wheeldown",    # Mouse Wheel Down
+                    106: "mousedrag",    # Mouse Drag
+                    107: "mousemove",    # Mouse Move
+                }
+                action_str = action_map.get(action_id)
+                
+                if action_str:
+                    log(f"Smart forwarding action '{action_str}' (from raw ID:{action_id}) to application layer", xbmc.LOGDEBUG)
+                    xbmc.executebuiltin(f"Action({action_str})")
+                else:
+                    log(f"Unmapped action ID: {action_id}", xbmc.LOGWARNING)
+            return
+        
+        if time.time() - self.last_overlay_close_time < 1.5:
+            # 刚关闭过遮罩，短时间内不再打开（留出时间给后续操作）
+            return
+
+        # 仅在播放视频时处理
+        if not self.isPlayingVideo():
+            if self.transparent_overlay:
+                self.close_transparent_overlay()
+            return
+
+        # 仅在Windows平台启用遮罩修复功能 (Only enable overlay fix on Windows)
+        if not xbmc.getCondVisibility("System.Platform.Windows"):
+            if self.transparent_overlay:
+                self.close_transparent_overlay()
+            return
+
+        should_show = False
+        ar = self.get_screen_aspect_ratio()
+        is_wide = ar > 1.8
+        if is_wide:
+            # 宽屏显示器
+            zoom = self.get_video_zoom()
+            is_zoomed = zoom > 1.01
+            if is_zoomed:
+                # 画面经过缩放
+                is_fullscreen_video = xbmc.getCondVisibility("Window.IsActive(fullscreenvideo)")
+                if is_fullscreen_video:
+                    # 正在全屏播放
+                    has_osd = xbmc.getCondVisibility("Window.IsVisible(videoosd)")
+                    has_seekbar = xbmc.getCondVisibility("Window.IsVisible(seekbar)") or xbmc.getCondVisibility("Window.IsVisible(playercontrols)")
+                    has_dialog = xbmc.getCondVisibility("System.HasActiveModalDialog")
+                    has_other_overlay = has_osd or has_seekbar or has_dialog
+                    if not has_other_overlay:
+                        # 没有OSD菜单 (Window.IsActive(videoosd))
+                        # 没有进度条 (Window.IsActive(seekbar)) 或播放控制条
+                        # 没有其他模态对话框 (System.HasActiveModalDialog)
+                        should_show = True
+                else:
+                    if self.transparent_overlay:
+                        should_show = True
+        if self.transparent_overlay:
+            if not should_show:
+                self.close_transparent_overlay()
+        else:
+            if should_show:
+                self.show_transparent_overlay()
+
+    def onPlayBackStopped(self):
+        if self.transparent_overlay:
+            self.close_transparent_overlay()
+
+    def onPlayBackEnded(self):
+        if self.transparent_overlay:
+            self.close_transparent_overlay()
+
+    def show_transparent_overlay(self):
+        # 如果已经存在实例，说明已经显示了，无需重复创建
+        if self.transparent_overlay:
+            return
+            
+        try:
+            # 创建透明覆盖层
+            # 这里的路径ADDON_PATH已经是绝对路径了
+            self.transparent_overlay = TransparentOverlay('script-transparent-overlay.xml', ADDON_PATH, 'Default', '1080i')
+            self.transparent_overlay.show()
+        except Exception as e:
+            log(f"Error showing transparent overlay: {e}", xbmc.LOGERROR)
 
     def update_outro_info(self):
         self.current_outro_time = None
@@ -358,6 +552,12 @@ if __name__ == '__main__':
             # 重置倒计时状态
             countdown_active = False
             
+        # 这里我们按需加载一个透明窗口，以解决放大视频后PGS字幕跑到屏幕外的问题(仅在宽屏且视频被放大时才有实际操作)。
+        try:
+            player.check_overlay_visibility()
+        except Exception as e:
+            log(f"Error checking overlay visibility: {e}", xbmc.LOGERROR)
+
         # 检查片尾跳过
         if player.isPlayingVideo() and player.current_outro_time:
             try:
