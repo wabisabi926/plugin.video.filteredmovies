@@ -1008,16 +1008,7 @@ def set_home_background(image):
         notification("背景已重置, 全局背景已恢复默认")
 
 def launch_t9():
-    # last_close用来处理先关闭窗口，后调用launch_t9(比如地平线，导火线)
-    # t9_is_open用来处理先调用launch_t9，后关闭窗口（比如默认皮肤estuary）
-    last_close = xbmcgui.Window(10000).getProperty("MFG.T9LastClose")
-    t9_is_open = xbmcgui.Window(10000).getProperty("MFG.T9Open")
-    last_close = float(last_close) if last_close else 0
-    log("Launching T9 Input Window {}".format(last_close))
-    if (time.time() - last_close < 0.3) or t9_is_open == "true":
-        return
-    # if t9_is_open == "true":
-    #     return
+    log("Launching T9 Input Window")
     # Start prefetch thread immediately
     threading.Thread(target=prefetch_data_for_window).start()
 
@@ -1063,7 +1054,7 @@ def launch_t9():
     w = window_handler.FilterWindow(xml_file, ADDON_PATH, 'Default', '5111')
     w.doModal()
     w.cleanup()
-    xbmcgui.Window(10000).setProperty("MFG.T9Open", "false")
+
     del w
 
 def filter_list(reload_param):

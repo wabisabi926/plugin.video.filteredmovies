@@ -185,7 +185,6 @@ class FilterWindow(xbmcgui.WindowXML):
         # Set property to indicate window is open
         # Clear T9 input
         self.setProperty("t9_input", "")
-        xbmcgui.Window(10000).setProperty("MFG.T9Open", "true")
         
         # Load state from Skin into Python memory
         self._load_state_from_skin()
@@ -292,7 +291,6 @@ class FilterWindow(xbmcgui.WindowXML):
         
         # 清除全局属性
         xbmcgui.Window(10000).clearProperty("MFG.T9Input")
-        xbmcgui.Window(10000).setProperty("MFG.T9LastClose", str(time.time()))
 
     def onAction(self, action):
         action_id = action.getId()
