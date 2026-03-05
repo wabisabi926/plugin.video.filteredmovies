@@ -48,7 +48,7 @@ def get_current_tvshow_info():
             "jsonrpc": "2.0",
             "method": "Player.GetItem",
             "params": {
-                "properties": ["tvshowid", "showtitle", "season"],
+                "properties": ["tvshowid", "showtitle", "season", "file"],
                 "playerid": 1
             },
             "id": 1
@@ -62,8 +62,27 @@ def get_current_tvshow_info():
             show_title = item.get('showtitle')
             season = item.get('season', -1)
             
+            # 1. 优先使用已刮削的剧集信息
             if tvshow_id and tvshow_id != -1:
                 return str(tvshow_id), show_title, str(season)
+            
+            # 2. 兼容未刮削的文件/文件夹模式
+            file_path = item.get('file')
+            if file_path:
+                # 忽略插件流或 PVR
+                if file_path.startswith("plugin://") or file_path.startswith("pvr://"):
+                    return None, None, None
+                    
+                # 使用 os.path 处理路径 (自动适配系统分隔符)
+                parent_dir = os.path.dirname(file_path)
+                dir_name = os.path.basename(parent_dir)
+                
+                if not dir_name:
+                    dir_name = "Unknown Folder"
+                
+                # 使用 "directory:路径" 作为 ID，如果是不同路径则视为不同剧集
+                # 默认季数为 1
+                return f"directory:{parent_dir}", dir_name, "1"
     except Exception as e:
         log(f"Error getting TV show info: {e}")
     return None, None, None
