@@ -361,7 +361,7 @@ def open_playing_tvshow():
             "jsonrpc": "2.0",
             "method": "Player.GetItem",
             "params": {
-                "properties": ["tvshowid"],
+                "properties": ["tvshowid", "season"],
                 "playerid": 1
             },
             "id": 1
@@ -372,11 +372,16 @@ def open_playing_tvshow():
         if 'result' in response and 'item' in response['result']:
             item = response['result']['item']
             tvshow_id = item.get('tvshowid')
+            season = item.get('season', -1)
             item_type = item.get('type')
             
             if item_type == 'episode' and tvshow_id and tvshow_id != -1:
-                log(f"Opening TVShow ID: {tvshow_id}")
-                path = f"videodb://tvshows/titles/{tvshow_id}/"
+                if season != -1:
+                    log(f"Opening TVShow ID: {tvshow_id} Season: {season}")
+                    path = f"videodb://tvshows/titles/{tvshow_id}/{season}/"
+                else:
+                    log(f"Opening TVShow ID: {tvshow_id}")
+                    path = f"videodb://tvshows/titles/{tvshow_id}/"
                 xbmc.executebuiltin(f"ActivateWindow(Videos,{path},return)")
             else:
                 log("Current playing item is not a TV show, opening Playlist")
