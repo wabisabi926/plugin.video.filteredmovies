@@ -1234,6 +1234,79 @@ def filter_list(reload_param):
         xbmcgui.Window(10000).setProperty("MFG.IsRefreshing", "false")
     log(f"Filtered list populated with {len(list_items)} items")
 
+def toggle_favourite():
+    """与原生右键菜单的"添加到收藏夹/从收藏夹移除"行为一致"""
+    # 从当前选中的 ListItem 读取信息，与原生 context menu 一致
+    title = xbmc.getInfoLabel('ListItem.Label')
+    dbid = xbmc.getInfoLabel('ListItem.DBID')
+    dbtype = xbmc.getInfoLabel('ListItem.DBType')
+    is_folder = xbmc.getCondVisibility('ListItem.IsFolder')
+    path = xbmc.getInfoLabel('ListItem.FolderPath') if is_folder else xbmc.getInfoLabel('ListItem.FilenameAndPath')
+    thumb = xbmc.getInfoLabel('ListItem.Art(poster)') or xbmc.getInfoLabel('ListItem.Thumb')
+    log(f"Toggle Favourite - Title: {title}, DBID: {dbid}, DBType: {dbtype}, IsFolder: {is_folder}, Path: {path}, Thumb: {thumb}")
+    if not path or not title:
+        notification("无法获取项目信息", sound=True)
+        return
+
+    # script:// 路径去掉尾部斜杠，避免收藏夹中插件名多出 /
+    if path.startswith("script://"):
+        path = path.rstrip('/')
+
+    # 对于库中的 folder 类型(tvshow/set)，使用 videodb 路径
+    if dbid and dbid.isdigit() and int(dbid) > 0 and is_folder:
+        if dbtype == "tvshow":
+            path = f"videodb://tvshows/titles/{dbid}/"
+        elif dbtype == "set":
+            path = f"videodb://movies/sets/{dbid}/"
+
+    # 判断收藏类型：folder 用 window，其余用 media
+    if is_folder:
+        fav_type = "window"
+    else:
+        fav_type = "media"
+
+    # 检查是否已在收藏夹
+    get_fav_query = {
+        "jsonrpc": "2.0",
+        "method": "Favourites.GetFavourites",
+        "params": {"properties": ["path", "windowparameter"]},
+        "id": 1
+    }
+    fav_resp = json.loads(xbmc.executeJSONRPC(json.dumps(get_fav_query)))
+    favourites = fav_resp.get("result", {}).get("favourites") or []
+    log(f"Current favourites: {favourites}")
+    is_favourite = False
+    if path.startswith("favourites://"):
+        is_favourite = True
+    else:
+        for fav in favourites:
+            fp = fav.get("path", "") or fav.get("windowparameter", "")
+            if fp == path:
+                is_favourite = True
+                break
+
+    # 调用 AddFavourite（内部实现为 AddOrRemove，即切换）
+    add_params = {"title": title, "type": fav_type}
+    if fav_type == "media":
+        add_params["path"] = path
+    else:
+        add_params["window"] = "videos"
+        add_params["windowparameter"] = path
+    if thumb:
+        add_params["thumbnail"] = thumb
+
+    add_query = {
+        "jsonrpc": "2.0",
+        "method": "Favourites.AddFavourite",
+        "params": add_params,
+        "id": 1
+    }
+    xbmc.executeJSONRPC(json.dumps(add_query))
+    if is_favourite:
+        notification("已从收藏夹移除", title=title)
+    else:
+        notification("已添加到收藏夹", title=title)
+
 def select_playback_speed():
     if not xbmc.getCondVisibility('Player.TempoEnabled'):
         notification("请在设置-播放器-视频中开启同步回放显示", sound=True)
@@ -1395,6 +1468,10 @@ def router(paramstring):
 
     if mode == "force_prev":
         force_prev()
+        return
+
+    if mode == "toggle_favourite":
+        toggle_favourite()
         return
 
     if mode == "open_videodb":
