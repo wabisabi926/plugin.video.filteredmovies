@@ -1306,12 +1306,7 @@ def select_playback_speed():
 def router(paramstring):
     log(f"Router called with: {paramstring}")
     if not paramstring:
-        # 如果是插件模式（有 Handle），则显示列表
-        if HANDLE != -1:
-            filter_list("")
-        else:
-            # 如果是脚本模式（无 Handle，例如点击运行），则打开 T9 窗口
-            launch_t9()
+        launch_t9()
         return
 
     # 解析路径，例如 plugin://..../?mode=play&movieid=1
@@ -1392,9 +1387,6 @@ def router(paramstring):
         populate_subtitle_list()
         return
 
-    if mode == "osd_click_handler":
-        osd_click_handler()
-        return
 
     if mode == "set_subtitle":
         index = params.get("index")
@@ -1412,25 +1404,6 @@ def router(paramstring):
         return
 
 
-
-def osd_click_handler():
-    # 检查 VideoOSD 是否打开
-    if not xbmc.getCondVisibility('Window.IsActive(videoosd)'):
-        return
-
-    window = xbmcgui.Window(12901) # VideoOSD
-    try:
-        focus_id = window.getFocusId()
-        # 检查焦点是否在字幕列表 (80000)
-        if focus_id == 80000:
-            ctrl = window.getControl(80000)
-            pos = ctrl.getSelectedPosition()
-            item = ctrl.getListItem(pos)
-            real_index = item.getProperty("index")
-            if real_index:
-                set_subtitle(real_index)
-    except Exception as e:
-        log(f"Error in osd_click_handler: {e}")
 
 if __name__ == "__main__":
     # sys.argv[0] 是 plugin://...; sys.argv[2] 是 '?xxx'
