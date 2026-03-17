@@ -1,36 +1,33 @@
 # -*- coding: utf-8 -*-
-from common import get_skin_name,notification, log
+import os
 import sys
 import urllib.parse
 import json
-import datetime
 import time
-
-import xbmc
-import xbmcgui
-import xbmcplugin
-import xbmcvfs
-import os
-import library
 import threading
 import pickle
 import base64
-# import t9_helper
-# import progress_helper
 
+import xbmc
+import xbmcaddon
+import xbmcgui
+import xbmcvfs
+import xbmcplugin
+
+from lib.common import get_skin_name, notification, log
+from lib import video_library as library
+
+ADDON = xbmcaddon.Addon()
+ADDON_PATH = xbmcvfs.translatePath(ADDON.getAddonInfo('path'))
+ADDON_DATA_PATH = xbmcvfs.translatePath(ADDON.getAddonInfo('profile'))
+if not os.path.exists(ADDON_DATA_PATH):
+    os.makedirs(ADDON_DATA_PATH)
+SKIP_DATA_FILE = os.path.join(ADDON_DATA_PATH, 'skip_intro_data.json')
+WINDOW_CACHE_FILE = os.path.join(ADDON_DATA_PATH, 'window_cache.pickle')
 try:
     HANDLE = int(sys.argv[1])
 except (IndexError, ValueError):
     HANDLE = -1
-
-ADDON_PATH = xbmcvfs.translatePath("special://home/addons/plugin.video.filteredmovies/")
-ADDON_DATA_PATH = xbmcvfs.translatePath("special://profile/addon_data/plugin.video.filteredmovies/")
-if not os.path.exists(ADDON_DATA_PATH):
-    os.makedirs(ADDON_DATA_PATH)
-
-SKIP_DATA_FILE = os.path.join(ADDON_DATA_PATH, 'skip_intro_data.json')
-WINDOW_CACHE_FILE = os.path.join(ADDON_DATA_PATH, 'window_cache.pickle')
-
 
 
 def prefetch_data_for_window():
@@ -310,44 +307,6 @@ def delete_skip_point():
     except Exception as e:
         log(f"Error deleting skip point: {e}")
         notification("删除错误", sound=True)
-
-def open_settings_and_click(window_id, clicks=2):
-    """
-    打开指定窗口，并向下移动指定次数后点击
-    """
-    xbmc.executebuiltin(f'ActivateWindow({window_id})')
-    # 稍微延迟一下，确保窗口打开
-    xbmc.sleep(100)
-    
-    # 移动焦点
-    for _ in range(clicks):
-        xbmc.executebuiltin('Action(Up)')
-        xbmc.sleep(20)
-    
-    # 点击
-    xbmc.executebuiltin('Action(Select)')
-
-
-def play_movie(movieid):
-    # 检查点击时间（由 Home.xml 设置）
-    click_time_str = xbmcgui.Window(10000).getProperty("MovieClickTime")
-    if click_time_str:
-        try:
-            click_time = float(click_time_str)
-            # 如果距离点击时间小于 3.0 秒，认为是自动播放误触，忽略
-            if time.time() - click_time < 3.0:
-                log(f"Play request ignored: too close to click time. Delta: {time.time() - click_time:.2f}s")
-                return
-        except ValueError:
-            pass
-
-    # 直接用 videodb 路径播放
-    path = f"videodb://movies/titles/{movieid}"
-    xbmc.executebuiltin(f"PlayMedia({path})")
-
-def play_musicvideo(mvid):
-    path = f"videodb://musicvideos/titles/{mvid}"
-    xbmc.executebuiltin(f"PlayMedia({path})")
 
 def open_playing_tvshow():
     # xbmc.executebuiltin("Dialog.Close(all,true)")
@@ -744,7 +703,7 @@ def select_subtitle():
 
     # Use custom window
     log("Opening custom window")
-    import window_handler
+    from lib import window_handler
     w = window_handler.DialogSelectWindow('Custom_1112_SubtitleSelect.xml', ADDON_PATH, 'Default', '1080i')
     w.setItems(display_items)
     w.doModal()
@@ -781,7 +740,7 @@ def open_osd_subtitle_list():
     if not display_items:
         return
 
-    import window_handler
+    from lib import window_handler
     # Use the new XML
     w = window_handler.OSDListWindow('Custom_1113_OSDSubtitleList.xml', ADDON_PATH, 'Default', '1080i')
     w.setItems(display_items)
@@ -973,7 +932,7 @@ def select_audio():
         return
 
     # Use custom window
-    import window_handler
+    from lib import window_handler
     w = window_handler.DialogSelectWindow('Custom_1114_AudioSelect.xml', ADDON_PATH, 'Default', '1080i')
     w.setItems(display_items)
     w.doModal()
@@ -1043,7 +1002,7 @@ def open_osd_audio_list():
     if not display_items:
         return
 
-    import window_handler
+    from lib import window_handler
     # Use new XML for audio list
     w = window_handler.OSDListWindow('Custom_1115_OSDAudioList.xml', ADDON_PATH, 'Default', '1080i')
     w.setItems(display_items)
@@ -1128,7 +1087,7 @@ def launch_t9():
         if os.path.exists(horizon_xml_path):
             xml_file = horizon_xml
 
-    import window_handler
+    from lib import window_handler
     # 创建并显示窗口
     w = window_handler.FilterWindow(xml_file, ADDON_PATH, 'Default', '1080i')
     w.doModal()
@@ -1177,7 +1136,7 @@ def filter_list(reload_param):
             except: pass
 
     import base64
-    import t9_helper
+    from lib import t9_helper
     
     # 1. Load state from Skin
     filter_state = {}
@@ -1343,7 +1302,7 @@ def select_playback_speed():
         })
 
     # 3. Open Dialog
-    import window_handler
+    from lib import window_handler
     w = window_handler.DialogSelectWindow('Custom_1116_SpeedSelect.xml', ADDON_PATH, 'Default', '1080i')
     w.setItems(display_items)
     w.doModal()
@@ -1402,16 +1361,6 @@ def router(paramstring):
         open_osd_audio_list()
         return
 
-    if mode == "record_click":
-        # 记录点击时间
-        xbmcgui.Window(10000).setProperty("MovieClickTime", str(time.time()))
-        return
-
-    if mode == "clear":
-        # 清空列表
-        xbmcplugin.endOfDirectory(HANDLE, cacheToDisc=False)
-        return
-
     if mode == "set_home_background":
         image = params.get("image", "")
         set_home_background(image)
@@ -1424,14 +1373,6 @@ def router(paramstring):
     if mode == "filter_list":
         reload_param = params.get('reload')
         filter_list(reload_param)
-        return
-
-    if mode == "open_sub_settings":
-        open_settings_and_click('osdsubtitlesettings', clicks=4)
-        return
-
-    if mode == "open_audio_settings":
-        open_settings_and_click('osdaudiosettings', clicks=3)
         return
 
     if mode == "open_playing_tvshow":
@@ -1473,14 +1414,6 @@ def router(paramstring):
     if mode == "toggle_favourite":
         toggle_favourite()
         return
-
-    if mode == "open_videodb":
-        path = params.get("path")
-        if path:
-            xbmc.executebuiltin(f"ActivateWindow(Videos,{path},return)")
-        return
-
-
 
 if __name__ == "__main__":
     # sys.argv[0] 是 plugin://...; sys.argv[2] 是 '?xxx'

@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
-from common import log
+from .common import log
 import os
 import json
 import xbmcvfs
 import xbmc
-import xbmcgui
 import itertools
 import threading
 

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from common import notification, log
+from .common import notification, log
+from . import t9_helper
 import xbmc
 import xbmcgui
 import time
@@ -7,7 +8,7 @@ import threading
 import queue
 import json
 import base64
-import t9_helper
+
 
 # 定义 Skin String 值到按钮 ID 的映射
 # 格式: { 'SkinStringName': { 'Value': ButtonID, 'Default': ButtonID } }

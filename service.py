@@ -1,17 +1,20 @@
 # -*- coding: utf-8 -*-
-from common import get_skin_name,notification,log
-import xbmc
-import xbmcgui
-import xbmcvfs
-import json
 import os
+import json
 import time
 import traceback
 import threading
 
-ADDON_ID = 'plugin.video.filteredmovies'
-ADDON_PATH = xbmcvfs.translatePath(f"special://home/addons/{ADDON_ID}/")
-ADDON_DATA_PATH = xbmcvfs.translatePath(f"special://profile/addon_data/{ADDON_ID}/")
+import xbmc
+import xbmcaddon
+import xbmcgui
+import xbmcvfs
+
+from lib.common import get_skin_name, notification, log
+
+ADDON = xbmcaddon.Addon()
+ADDON_PATH = xbmcvfs.translatePath(ADDON.getAddonInfo('path'))
+ADDON_DATA_PATH = xbmcvfs.translatePath(ADDON.getAddonInfo('profile'))
 if not os.path.exists(ADDON_DATA_PATH):
     os.makedirs(ADDON_DATA_PATH)
 

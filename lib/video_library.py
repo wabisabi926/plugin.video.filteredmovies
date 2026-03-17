@@ -1,12 +1,9 @@
 # -*- coding: utf-8 -*-
-from common import log
+from .common import log
 import xbmc
 import xbmcgui
 import json
 import datetime
-import urllib.parse
-import os
-import time
 
 
 def get_filter_val(filters, key, default=None):

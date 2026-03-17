@@ -2,6 +2,9 @@ import os
 import zipfile
 import xml.etree.ElementTree as ET
 
+# 切换到项目根目录
+os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+
 def get_addon_info():
     if not os.path.exists('addon.xml'):
         raise FileNotFoundError("addon.xml not found in current directory")
@@ -29,7 +32,7 @@ def zip_addon(addon_id, version):
     with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
         for root, dirs, files in os.walk(cwd):
             # Exclude directories
-            dirs[:] = [d for d in dirs if d not in ['dist', '.idea', '.vscode', '__pycache__', '.git']]
+            dirs[:] = [d for d in dirs if d not in ['dist', '.idea', '.vscode', '__pycache__', '.git', '.github', 'dev']]
             
             for file in files:
                 # Exclude specific files
