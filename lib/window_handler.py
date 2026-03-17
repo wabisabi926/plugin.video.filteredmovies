@@ -181,7 +181,7 @@ class FilterWindow(xbmcgui.WindowXML):
         # Set property to indicate window is open
         # Clear T9 input
         self.setProperty("t9_input", "")
-        
+        t9_helper.helper.build_memory_cache_sync()
         # Load state from Skin into Python memory
         self._load_state_from_skin()
         
@@ -190,7 +190,7 @@ class FilterWindow(xbmcgui.WindowXML):
         
         # 初始化属性，确保非空
         xbmcgui.Window(10000).setProperty("MFG.T9Input", "")
-        
+        xbmcgui.Window(10000).setProperty("MFG.AllowedIDs", "")
         # self.refresh_container()
 
         self.input_queue = queue.Queue()
@@ -200,11 +200,9 @@ class FilterWindow(xbmcgui.WindowXML):
         self.worker.start()
 
     def _t9_input_worker(self):
-        # 初始状态为阻塞等待，避免空转
-        empty_trigger = True
         monitor = xbmc.Monitor()
         last_input = ""
-        last_refresh_time = 0
+        last_input_time = time.time()
         while self.running:
             # 检查 Kodi 是否正在关闭
             if monitor.abortRequested():
@@ -214,15 +212,9 @@ class FilterWindow(xbmcgui.WindowXML):
 
             try:
                 events = []
+                # 每0.1秒唤醒检查一次
                 try:
-                    # 如果有待刷新任务，需要超时来检查是否到了刷新时间
-                    # 如果没有任务，可以无限阻塞等待用户输入，完全不消耗CPU
-                    # 改为 1.0s 超时以便检查 abortRequested
-                    timeout = 1.0 if empty_trigger else 0.2
-                    # 阻塞等待第一个事件
-                    events.append(self.input_queue.get(timeout=timeout))
-                    # 收到事件后，进入去抖动模式（非阻塞/短超时）
-                    empty_trigger = False
+                    events.append(self.input_queue.get(timeout=0.1))
                     # 只要队列不为空，就一次性取出所有积压事件
                     while not self.input_queue.empty():
                         try:
@@ -230,8 +222,7 @@ class FilterWindow(xbmcgui.WindowXML):
                         except queue.Empty:
                             break
                 except queue.Empty:
-                    # 超时未收到新事件，说明输入间歇，标记为可阻塞状态
-                    empty_trigger = True
+                    pass
                 
                 current_input = xbmcgui.Window(10000).getProperty("MFG.T9Input") or ""
                 # current_input = last_input
@@ -245,13 +236,13 @@ class FilterWindow(xbmcgui.WindowXML):
                     elif etype == 'delete':
                         current_input = current_input[:-1] if current_input else ""
                     elif etype == 'clear':
-                        # 清空输入立即响应
                         current_input = ""
                     elif etype == 'close':
                         log("close worker")
                         return
                 if events:
                     xbmcgui.Window(10000).setProperty("MFG.T9Input", current_input)
+                    last_input_time = time.time()
 
                 if current_input == "9527007":
                     t9_helper.helper.rebuild_cache()
@@ -259,17 +250,21 @@ class FilterWindow(xbmcgui.WindowXML):
                     log("Magic code 9527007 detected. Rebuilding T9 cache.", xbmc.LOGWARNING)
                     current_input = ""
                     xbmcgui.Window(10000).setProperty("MFG.T9Input", current_input)
+                    last_input = current_input
 
                 if current_input != last_input:
                     if not current_input:
                         # 输入已清空，立即刷新列表
+                        xbmcgui.Window(10000).setProperty("MFG.AllowedIDs", "")
                         self.refresh_container()
-                        last_refresh_time = time.time()
-                    if len(current_input) > 2 and (time.time() - last_refresh_time > 0.2):
-                        self.refresh_container()
-                        last_refresh_time = time.time()
-                    if not events:
+                        last_input_time = time.time()
                         last_input = current_input
+                    else:
+                        if (time.time() - last_input_time > 0.5):
+                            allowed_ids = t9_helper.helper.search(current_input)
+                            xbmcgui.Window(10000).setProperty("MFG.AllowedIDs", json.dumps(allowed_ids))
+                            self.refresh_container()
+                            last_input = current_input
                 
             except Exception as e:
                 log(f"Worker error: {e}", xbmc.LOGERROR)
@@ -284,6 +279,7 @@ class FilterWindow(xbmcgui.WindowXML):
         
         # 清除全局属性
         xbmcgui.Window(10000).clearProperty("MFG.T9Input")
+        xbmcgui.Window(10000).clearProperty("MFG.AllowedIDs")
 
     def onAction(self, action):
         action_id = action.getId()
@@ -393,7 +389,7 @@ class FilterWindow(xbmcgui.WindowXML):
             self.refresh_container()
 
     
-    def refresh_container(self, state=None):
+    def refresh_container(self):
         # 更新 ReloadID 以触发 XML 中的 content 刷新
         log("Refreshing container via ReloadID")
         # 触发刷新动画 (Fade Out)

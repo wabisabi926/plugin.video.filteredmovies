@@ -5,8 +5,13 @@ import os
 import shutil
 import fnmatch
 
+DEV_REMOTE = True
+
 SOURCE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TARGET_DIR = os.path.join(os.environ['APPDATA'], 'Kodi', 'addons', 'plugin.video.filteredmovies')
+if DEV_REMOTE:
+    TARGET_DIR = r"F:\storage\.kodi\addons\plugin.video.filteredmovies"
+else:
+    TARGET_DIR = os.path.join(os.environ.get('APPDATA', ''), 'Kodi', 'addons', 'plugin.video.filteredmovies')
 
 EXCLUDE_DIRS = {'.git', '.github', '.vscode', '.idea', '__pycache__', 'dist', 'test', 'dev'}
 EXCLUDE_FILES = {'*.pyc', '.gitignore', '.DS_Store', 'checklist.md'}
@@ -16,6 +21,11 @@ def should_exclude_file(name):
     return any(fnmatch.fnmatch(name, pat) for pat in EXCLUDE_FILES)
 
 
+def remove_readonly(func, path, excinfo):
+    import stat
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
+
 def deploy():
     print(f"\033[32mStarting deployment to dev environment...\033[0m")
     print(f"Source Dir: {SOURCE_DIR}")
@@ -24,8 +34,9 @@ def deploy():
 
     # Clean target
     if os.path.exists(TARGET_DIR):
-        print(f"\033[33mCleaning target directory...\033[0m")
-        shutil.rmtree(TARGET_DIR)
+        print(f"\033[33mCleaning target directory with system command...\033[0m")
+        import subprocess
+        subprocess.run(f'cmd /c rmdir /s /q "{TARGET_DIR}"', shell=True)
     os.makedirs(TARGET_DIR, exist_ok=True)
 
     # Copy files

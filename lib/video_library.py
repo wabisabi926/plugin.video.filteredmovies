@@ -526,29 +526,19 @@ def get_items_by_ids(allowed_ids, media_type, limit):
     if not allowed_ids:
         return []
     
-    log(f"Applying T9 ID filter {allowed_ids} for {media_type}")
+    log(f"Applying T9 ID filter {len(allowed_ids.get('movies', [])) + len(allowed_ids.get('tvshows', [])) + len(allowed_ids.get('sets', []))} items for {media_type}")
     
     # Filter allowed_ids based on media_type
     filtered_ids = []
-    for item_data in allowed_ids:
-        if isinstance(item_data, int):
-            itype = "movie"
-            item_data = {"id": item_data, "type": "movie"}
-        else:
-            itype = item_data.get("type", "movie")
-        
-        if media_type == "all":
-            filtered_ids.append(item_data)
-        elif media_type == "movie":
-            if itype == "movie": filtered_ids.append(item_data)
-        elif media_type == "tvshow":
-            if itype == "tvshow": filtered_ids.append(item_data)
-        elif media_type == "set":
-            if itype == "set": filtered_ids.append(item_data)
-        elif media_type == "documentary":
-            if itype in ["movie", "tvshow"]: filtered_ids.append(item_data)
-        elif media_type == "concert":
-            if itype == "movie": filtered_ids.append(item_data)
+    if media_type in ["all", "movie", "documentary", "concert"]:
+        for mid in allowed_ids.get("movies", []):
+            filtered_ids.append({"id": mid, "type": "movie"})
+    if media_type in ["all", "tvshow", "documentary"]:
+        for tid in allowed_ids.get("tvshows", []):
+            filtered_ids.append({"id": tid, "type": "tvshow"})
+    if media_type in ["all", "set"]:
+        for sid in allowed_ids.get("sets", []):
+            filtered_ids.append({"id": sid, "type": "set"})
     
     batch_cmds = []
     items_to_fetch = filtered_ids[:limit]
@@ -949,7 +939,10 @@ def get_mixed_items(filters, limit, allowed_ids=None):
 def jsonrpc_get_items(filters=None, limit=500, allowed_ids=None):
     media_type = get_filter_val(filters, "filter.mediatype", "all")
 
-    log(f"jsonrpc_get_items: type={media_type}, allowed_ids={len(allowed_ids) if allowed_ids else 'None'}")
+    allow_len = "None"
+    if allowed_ids is not None:
+        allow_len = sum(len(v) for v in allowed_ids.values())
+    log(f"jsonrpc_get_items: type={media_type}, limit={limit}, allowed_ids={allow_len}")
 
     if media_type == "电影":
         return get_movie_items(filters, limit, allowed_ids)

@@ -12,7 +12,8 @@ import xbmcvfs
 
 from lib.common import get_skin_name, notification, log
 
-ADDON = xbmcaddon.Addon()
+ADDON_ID = 'plugin.video.filteredmovies'
+ADDON = xbmcaddon.Addon(id=ADDON_ID)
 ADDON_PATH = xbmcvfs.translatePath(ADDON.getAddonInfo('path'))
 ADDON_DATA_PATH = xbmcvfs.translatePath(ADDON.getAddonInfo('profile'))
 if not os.path.exists(ADDON_DATA_PATH):

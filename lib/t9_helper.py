@@ -32,22 +32,24 @@ class T9Helper:
         根据输入的数字序列搜索匹配的电影、剧集或系列。
         返回匹配的 ID 列表。
         """
-        if not self.synced:
-            self.build_memory_cache_sync()
         
         cache = self._get_cached_data()
         if not cache:
-            return []
+            return {"movies": [], "tvshows": [], "sets": []}
         
             
-        matches = []
+        matches = {
+            "movies": [],
+            "tvshows": [],
+            "sets": []
+        }
         
         # 搜索电影
         movies = cache.get("movies", {})
         for mid, codes in movies.items():
             for code in codes:
                 if code.startswith(input_seq):
-                    matches.append({"id": int(mid), "type": "movie"})
+                    matches["movies"].append(int(mid))
                     break
                     
         # 搜索剧集
@@ -55,7 +57,7 @@ class T9Helper:
         for mid, codes in tvshows.items():
             for code in codes:
                 if code.startswith(input_seq):
-                    matches.append({"id": int(mid), "type": "tvshow"})
+                    matches["tvshows"].append(int(mid))
                     break
 
         # 搜索系列
@@ -63,7 +65,7 @@ class T9Helper:
         for mid, codes in sets.items():
             for code in codes:
                 if code.startswith(input_seq):
-                    matches.append({"id": int(mid), "type": "set"})
+                    matches["sets"].append(int(mid))
                     break
         
         return matches
@@ -240,7 +242,6 @@ class T9Helper:
         获取缓存数据，优先从内存获取，其次从文件。
         """
         if self.cached_t9_map is None:
-            
             if os.path.exists(self.CACHE_FILE):
                 try:
                     with open(self.CACHE_FILE, "r", encoding="utf-8") as f:

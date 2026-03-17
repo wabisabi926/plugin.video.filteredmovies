@@ -17,7 +17,8 @@ import xbmcplugin
 from lib.common import get_skin_name, notification, log
 from lib import video_library as library
 
-ADDON = xbmcaddon.Addon()
+ADDON_ID = 'plugin.video.filteredmovies'
+ADDON = xbmcaddon.Addon(id=ADDON_ID)
 ADDON_PATH = xbmcvfs.translatePath(ADDON.getAddonInfo('path'))
 ADDON_DATA_PATH = xbmcvfs.translatePath(ADDON.getAddonInfo('profile'))
 if not os.path.exists(ADDON_DATA_PATH):
@@ -1114,9 +1115,7 @@ def filter_list(reload_param):
             log(f"Found window cache: {WINDOW_CACHE_FILE}")
             with open(WINDOW_CACHE_FILE, 'rb') as f:
                 items = pickle.load(f)
-            
 
-            
             log(f"Loaded {len(items)} items from window cache.")
             
             list_items = []
@@ -1163,16 +1162,25 @@ def filter_list(reload_param):
 
     # 3. T9 Input
     t9_input = xbmcgui.Window(10000).getProperty("MFG.T9Input")
+    allowed_ids_str = xbmcgui.Window(10000).getProperty("MFG.AllowedIDs")
     allowed_ids = None
-    if t9_input and len(t9_input) >= 3:
-        allowed_ids = t9_helper.helper.search(t9_input)
-    
+    limit=300
+    if t9_input:
+        if allowed_ids_str:
+            try:
+                allowed_ids = json.loads(allowed_ids_str)
+            except Exception as e:
+                log(f"Error parsing allowed_ids: {e}")
+                allowed_ids = t9_helper.helper.search(t9_input)
+        else:
+            allowed_ids = t9_helper.helper.search(t9_input)
+        limit = 24
+        # 当有T9输入时，只保留影视范围
+        keys_to_keep = ["filter.mediatype"]
+        filters = {k: v for k, v in filters.items() if k in keys_to_keep}
+
     # 4. Get Items
-    if not allowed_ids:
-        items = library.jsonrpc_get_items(filters=filters, limit=300, allowed_ids=allowed_ids)
-    else:
-        items = library.jsonrpc_get_items(filters=filters, limit=60, allowed_ids=allowed_ids)
-        
+    items = library.jsonrpc_get_items(filters=filters, limit=limit, allowed_ids=allowed_ids)
     items = library.fix_movie_set_poster(items)
     # 5. Populate List
     
