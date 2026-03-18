@@ -1168,5 +1168,8 @@ def create_list_item(m):
     info_tag.setDbId(int(item_id))
 
     li.setPath(url)
+    # 强制设置目标窗口，防止 Kodi 在添加收藏夹时将上下文菜单所在窗口(如 13003)绑定到收藏夹URL
+    # 设置为 "videos" 或 "10025"，保证从收藏夹打开或者右键菜单处理都按照原生视频库逻辑处理。
+    li.setProperty("targetwindow", "videos")
 
     return li, url, is_folder
