@@ -249,7 +249,7 @@ class FilterWindow(xbmcgui.WindowXML):
         # Set property to indicate window is open
         # Clear T9 input
         self.setProperty("t9_input", "")
-        t9_helper.helper.build_memory_cache_sync()
+        t9_helper.helper.build_memory_cache_async()
         # Load state from Skin into Python memory
         self._load_state_from_skin()
         

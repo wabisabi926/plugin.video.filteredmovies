@@ -29,7 +29,8 @@
     <extension point="xbmc.addon.metadata">
         <summary lang="zh_CN">电影剧集筛选和增强工具</summary>
         <summary lang="en_GB">Movies and TV shows filter and enhancement tool</summary>
-        <description lang="zh_CN">这是一个为 Kodi 设计的高级电影剧集筛选和增强工具插件。
+        <description lang="zh_CN">高级电影剧集筛选和增强工具插件。
+项目主页: github.com/forbxy
 主要功能包括：
 1. 完整的类似在线流媒体平台的筛选页面。
 2. 支持九宫格(T9)拼音搜索快速定位。
