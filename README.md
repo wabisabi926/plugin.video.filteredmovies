@@ -130,7 +130,7 @@ RunScript(plugin.video.filteredmovies, ?mode=select_audio)
 RunScript(plugin.video.filteredmovies, ?mode=select_playback_speed)
 ```
 
-**VS10 色彩引擎模式切换**
+**VS10 引擎模式切换**
 *   循环切换或直接指定当前片源可用的 VS10 转码模式 (Origin / SDR / HDR10 / DV) 自动跳过不支持的模式。
 ```xml
 RunScript(plugin.video.filteredmovies, ?mode=set_vs10_mode)

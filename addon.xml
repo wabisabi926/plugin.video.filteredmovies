@@ -27,8 +27,25 @@
 
     <!-- 元数据 -->
     <extension point="xbmc.addon.metadata">
-        <summary>Movies list with UI filters</summary>
-        <description>Provide filtered movie list to custom skin view</description>
+        <summary lang="zh_CN">电影剧集筛选和增强工具</summary>
+        <summary lang="en_GB">Movies and TV shows filter and enhancement tool</summary>
+        <description lang="zh_CN">这是一个为 Kodi 设计的高级电影剧集筛选和增强工具插件。
+主要功能包括：
+1. 完整的类似在线流媒体平台的筛选页面。
+2. 支持九宫格(T9)拼音搜索快速定位。
+3. 一键快捷切换字幕、音轨和播放倍速。
+4. 手动记录并自动跳过剧集片头和片尾。
+5. 自动加载 ISO 格式视频的外部字幕。
+6. 系统级重启Kodi,切换vs10模式,重启到安卓等接口
+需配合controller switcher插件绑定功能到按键上</description>
+        <description lang="en_GB">An advanced movie/TV show filtering and enhancement tool for Kodi.
+Key features include:
+1. Interactive filter UI similar to streaming platforms.
+2. T9 pinyin search for fast video lookup.
+3. Quick toggles for subtitles, audio tracks, and playback speed.
+4. Manually record and automatically skip TV show intros and outros.
+5. Auto-loading of external subtitles for ISO files.
+6. Set movie fanart as the global Kodi background.</description>
         <platform>all</platform>
         <assets>
             <icon>icon.png</icon>
