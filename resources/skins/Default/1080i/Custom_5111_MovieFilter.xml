@@ -36,8 +36,9 @@
                 <font>font13</font>
                 <textcolor>white</textcolor>
             </control>
-            <!-- Keypad Panel -->
+            <!-- Square T9 Keypad Panel -->
             <control type="panel" id="6050">
+                <visible>!String.IsEqual(Window(Home).Property(MFG.UseRounded),true)</visible>
                 <left>0</left>
                 <top>0</top>
                 <width>310</width>
@@ -47,16 +48,9 @@
                 <orientation>vertical</orientation>
                 <itemlayout width="91" height="65">
                     <control type="image">
-                        <visible>!String.IsEqual(Window(Home).Property(MFG.UseRounded),true)</visible>
                         <width>88</width>
                         <height>62</height>
                         <texture colordiffuse="22FFFFFF">colors/fm_white.png</texture>
-                    </control>
-                    <control type="image">
-                        <visible>String.IsEqual(Window(Home).Property(MFG.UseRounded),true)</visible>
-                        <width>88</width>
-                        <height>62</height>
-                        <texture colordiffuse="22FFFFFF">common/t9_btn_88x62.png</texture>
                     </control>
                     <control type="label">
                         <top>8</top>
@@ -67,7 +61,7 @@
                         <font>font12</font>
                         <label>$INFO[ListItem.Property(DisplayLabel)]</label>
                         <textcolor>FFFFFFFF</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                         <visible>!String.IsEmpty(ListItem.Label2)</visible>
@@ -91,7 +85,7 @@
                         <font>font12</font>
                         <label>$INFO[ListItem.Property(DisplayLabel)]</label>
                         <textcolor>FFFFFFFF</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                         <visible>String.IsEmpty(ListItem.Label2)</visible>
@@ -99,16 +93,9 @@
                 </itemlayout>
                 <focusedlayout width="91" height="65">
                     <control type="image">
-                        <visible>!String.IsEqual(Window(Home).Property(MFG.UseRounded),true)</visible>
                         <width>88</width>
                         <height>62</height>
-                        <texture colordiffuse="FF19B5FE">colors/fm_white.png</texture>
-                    </control>
-                    <control type="image">
-                        <visible>String.IsEqual(Window(Home).Property(MFG.UseRounded),true)</visible>
-                        <width>88</width>
-                        <height>62</height>
-                        <texture colordiffuse="FF19B5FE">common/t9_btn_88x62.png</texture>
+                        <texture colordiffuse="$INFO[Window(Home).Property(MFG.FocusColor)]">colors/fm_white.png</texture>
                     </control>
                     <control type="label">
                         <top>8</top>
@@ -119,7 +106,7 @@
                         <font>font12</font>
                         <label>$INFO[ListItem.Property(DisplayLabel)]</label>
                         <textcolor>FFFFFFFF</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                         <visible>!String.IsEmpty(ListItem.Label2)</visible>
@@ -133,7 +120,7 @@
                         <font>font10</font>
                         <label>$INFO[ListItem.Label2]</label>
                         <textcolor>FFFFFFFF</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                         <visible>!String.IsEmpty(ListItem.Label2)</visible>
@@ -146,7 +133,7 @@
                         <font>font12</font>
                         <label>$INFO[ListItem.Property(DisplayLabel)]</label>
                         <textcolor>FFFFFFFF</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                         <visible>String.IsEmpty(ListItem.Label2)</visible>
@@ -220,9 +207,187 @@
                         <onclick>Action(Number0)</onclick>
                     </item>
                     <item>
-                        <label>Clr</label>
+                        <label>键盘</label>
                         <label2></label2>
-                        <property name="DisplayLabel">Clr</property>
+                        <property name="DisplayLabel">键盘</property>
+                        <onclick>Action(Stop)</onclick>
+                    </item>
+                </content>
+            </control>
+            <!-- Rounded T9 Keypad Panel -->
+            <control type="panel" id="6050">
+                <visible>String.IsEqual(Window(Home).Property(MFG.UseRounded),true)</visible>
+                <left>0</left>
+                <top>0</top>
+                <width>300</width>
+                <height>264</height>
+                <onright>9000</onright>
+                <ondown>SetFocus(9999,0)</ondown>
+                <orientation>vertical</orientation>
+                <itemlayout width="100" height="66">
+                    <control type="image">
+                        <width>92</width>
+                        <height>58</height>
+                        <texture colordiffuse="22FFFFFF">common/t9_btn_88x62.png</texture>
+                    </control>
+                    <control type="label">
+                        <top>6</top>
+                        <width>92</width>
+                        <height>24</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>font12</font>
+                        <label>$INFO[ListItem.Property(DisplayLabel)]</label>
+                        <textcolor>FFFFFFFF</textcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
+                    <texturefocus></texturefocus>
+                    <texturenofocus></texturenofocus>
+                        <visible>!String.IsEmpty(ListItem.Label2)</visible>
+                    </control>
+                    <control type="label">
+                        <top>30</top>
+                        <width>92</width>
+                        <height>18</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>font10</font>
+                        <label>$INFO[ListItem.Label2]</label>
+                        <textcolor>FFAAAAAA</textcolor>
+                        <visible>!String.IsEmpty(ListItem.Label2)</visible>
+                    </control>
+                    <control type="label">
+                        <width>92</width>
+                        <height>58</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>font12</font>
+                        <label>$INFO[ListItem.Property(DisplayLabel)]</label>
+                        <textcolor>FFFFFFFF</textcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
+                    <texturefocus></texturefocus>
+                    <texturenofocus></texturenofocus>
+                        <visible>String.IsEmpty(ListItem.Label2)</visible>
+                    </control>
+                </itemlayout>
+                <focusedlayout width="100" height="66">
+                    <control type="image">
+                        <width>92</width>
+                        <height>58</height>
+                        <texture colordiffuse="$INFO[Window(Home).Property(MFG.FocusColor)]">common/t9_btn_88x62.png</texture>
+                    </control>
+                    <control type="label">
+                        <top>6</top>
+                        <width>92</width>
+                        <height>24</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>font12</font>
+                        <label>$INFO[ListItem.Property(DisplayLabel)]</label>
+                        <textcolor>FFFFFFFF</textcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
+                    <texturefocus></texturefocus>
+                    <texturenofocus></texturenofocus>
+                        <visible>!String.IsEmpty(ListItem.Label2)</visible>
+                    </control>
+                    <control type="label">
+                        <top>30</top>
+                        <width>92</width>
+                        <height>18</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>font10</font>
+                        <label>$INFO[ListItem.Label2]</label>
+                        <textcolor>FFFFFFFF</textcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
+                    <texturefocus></texturefocus>
+                    <texturenofocus></texturenofocus>
+                        <visible>!String.IsEmpty(ListItem.Label2)</visible>
+                    </control>
+                    <control type="label">
+                        <width>92</width>
+                        <height>58</height>
+                        <align>center</align>
+                        <aligny>center</aligny>
+                        <font>font12</font>
+                        <label>$INFO[ListItem.Property(DisplayLabel)]</label>
+                        <textcolor>FFFFFFFF</textcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
+                    <texturefocus></texturefocus>
+                    <texturenofocus></texturenofocus>
+                        <visible>String.IsEmpty(ListItem.Label2)</visible>
+                    </control>
+                </focusedlayout>
+                <content>
+                    <item>
+                        <label>1</label>
+                        <label2>[B][/B]</label2>
+                        <property name="DisplayLabel">[B]1[/B]</property>
+                        <onclick>Action(Number1)</onclick>
+                    </item>
+                    <item>
+                        <label>2</label>
+                        <label2>ABC</label2>
+                        <property name="DisplayLabel">[B]2[/B]</property>
+                        <onclick>Action(Number2)</onclick>
+                    </item>
+                    <item>
+                        <label>3</label>
+                        <label2>DEF</label2>
+                        <property name="DisplayLabel">[B]3[/B]</property>
+                        <onclick>Action(Number3)</onclick>
+                    </item>
+                    <item>
+                        <label>4</label>
+                        <label2>GHI</label2>
+                        <property name="DisplayLabel">[B]4[/B]</property>
+                        <onclick>Action(Number4)</onclick>
+                    </item>
+                    <item>
+                        <label>5</label>
+                        <label2>JKL</label2>
+                        <property name="DisplayLabel">[B]5[/B]</property>
+                        <onclick>Action(Number5)</onclick>
+                    </item>
+                    <item>
+                        <label>6</label>
+                        <label2>MNO</label2>
+                        <property name="DisplayLabel">[B]6[/B]</property>
+                        <onclick>Action(Number6)</onclick>
+                    </item>
+                    <item>
+                        <label>7</label>
+                        <label2>PQRS</label2>
+                        <property name="DisplayLabel">[B]7[/B]</property>
+                        <onclick>Action(Number7)</onclick>
+                    </item>
+                    <item>
+                        <label>8</label>
+                        <label2>TUV</label2>
+                        <property name="DisplayLabel">[B]8[/B]</property>
+                        <onclick>Action(Number8)</onclick>
+                    </item>
+                    <item>
+                        <label>9</label>
+                        <label2>WXYZ</label2>
+                        <property name="DisplayLabel">[B]9[/B]</property>
+                        <onclick>Action(Number9)</onclick>
+                    </item>
+                    <item>
+                        <label>Del</label>
+                        <label2></label2>
+                        <property name="DisplayLabel">Del</property>
+                        <onclick>Action(Delete)</onclick>
+                    </item>
+                    <item>
+                        <label>0</label>
+                        <label2></label2>
+                        <property name="DisplayLabel">[B]0[/B]</property>
+                        <onclick>Action(Number0)</onclick>
+                    </item>
+                    <item>
+                        <label>键盘</label>
+                        <label2></label2>
+                        <property name="DisplayLabel">键盘</property>
                         <onclick>Action(Stop)</onclick>
                     </item>
                 </content>
@@ -258,7 +423,7 @@
                     <ondown>SetFocus($INFO[Window(Home).Property(Return_1013)])</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.1013)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -273,7 +438,7 @@
                     <ondown>6003</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.1015)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -288,7 +453,7 @@
                     <ondown>6004</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.1014)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -303,7 +468,7 @@
                     <ondown>6005</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.1011)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -318,7 +483,7 @@
                     <ondown>6006</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.1012)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -350,7 +515,7 @@
                     <ondown>2001</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.6001)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -367,7 +532,7 @@
                     <ondown>2002</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.6002)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -383,7 +548,7 @@
                     <ondown>2003</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.6003)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -399,7 +564,7 @@
                     <ondown>SetFocus($INFO[Window(Home).Property(Return_6004)])</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.6004)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -415,7 +580,7 @@
                     <ondown>2006</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.6005)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -431,7 +596,7 @@
                     <ondown>SetFocus($INFO[Window(Home).Property(Return_6006)])</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.6006)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -462,7 +627,7 @@
                     <ondown>3001</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.2001)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -478,7 +643,7 @@
                     <ondown>3002</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.2002)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -494,7 +659,7 @@
                     <ondown>3003</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.2003)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -512,7 +677,7 @@
                     <ondown>SetFocus(3004)</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.2004)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -530,7 +695,7 @@
                     <ondown>SetFocus(3004)</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.2005)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -546,7 +711,7 @@
                     <ondown>3005</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.2006)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -563,7 +728,7 @@
                     <ondown>3006</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.2007)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -579,7 +744,7 @@
                     <ondown>3007</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.2014)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -596,7 +761,7 @@
                     <ondown>3008</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.2008)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -613,7 +778,7 @@
                     <ondown>3009</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.2009)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -630,7 +795,7 @@
                     <ondown>3010</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.2010)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -647,7 +812,7 @@
                     <ondown>3011</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.2011)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -664,7 +829,7 @@
                     <ondown>3012</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.2012)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -681,7 +846,7 @@
                     <ondown>3014</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.2013)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -698,7 +863,7 @@
                     <ondown>3015</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.2015)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -727,7 +892,7 @@
                     <ondown>4001</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.3001)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -743,7 +908,7 @@
                     <ondown>4002</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.3002)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -759,7 +924,7 @@
                     <ondown>4003</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.3003)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -775,7 +940,7 @@
                     <ondown>4004</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.3004)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -792,7 +957,7 @@
                     <ondown>SetFocus(4005)</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.3005)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -809,7 +974,7 @@
                     <ondown>SetFocus(4005)</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.3006)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -825,7 +990,7 @@
                     <ondown>4006</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.3007)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -842,7 +1007,7 @@
                     <ondown>SetFocus(4007)</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.3008)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -859,7 +1024,7 @@
                     <ondown>SetFocus(4007)</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.3009)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -875,7 +1040,7 @@
                     <ondown>4008</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.3010)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -891,7 +1056,7 @@
                     <ondown>4009</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.3011)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -908,7 +1073,7 @@
                     <ondown>SetFocus(4010)</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.3012)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -926,7 +1091,7 @@
                     <ondown>SetFocus(4010)</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.3014)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -943,7 +1108,7 @@
                     <ondown>SetFocus(4010)</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.3015)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -960,7 +1125,7 @@
                     <ondown>SetFocus(4010)</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.3013)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -991,7 +1156,7 @@
                     <ondown>5001</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.4001)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -1007,7 +1172,7 @@
                     <ondown>5002</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.4002)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -1023,7 +1188,7 @@
                     <ondown>SetFocus($INFO[Window(Home).Property(Return_4003)])</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.4003)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -1039,7 +1204,7 @@
                     <ondown>SetFocus($INFO[Window(Home).Property(Return_4004)])</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.4004)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -1055,7 +1220,7 @@
                     <ondown>5006</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.4005)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -1071,7 +1236,7 @@
                     <ondown>5006</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.4006)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -1087,7 +1252,7 @@
                     <ondown>5006</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.4007)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -1103,7 +1268,7 @@
                     <ondown>5006</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.4008)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -1119,7 +1284,7 @@
                     <ondown>5006</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.4009)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -1135,7 +1300,7 @@
                     <ondown>5006</ondown>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.4010)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -1166,7 +1331,7 @@
                     <onup>4001</onup>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.5001)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -1182,7 +1347,7 @@
                     <onup>4002</onup>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.5002)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -1198,7 +1363,7 @@
                     <onup>SetFocus(4003)</onup>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.5003)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -1214,7 +1379,7 @@
                     <onup>SetFocus(4003)</onup>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.5004)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -1230,7 +1395,7 @@
                     <onup>SetFocus(4004)</onup>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.5005)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -1239,14 +1404,14 @@
                 </control>
                 <!-- 6分以下 - Unselected -->
                 <control type="button" id="5006">
-                    <width>120</width>
+                    <width>150</width>
                     <height>32</height>
                     <ondown>SetFocus(9999,2)</ondown>
                     <onup>SetProperty(Return_4004,5006,Home)</onup>
                     <onup>SetFocus(4004)</onup>
                     <font>font13</font>
                     <textcolor>$INFO[Window(Home).Property(MFG.FilterColor.5006)]</textcolor>
-                    <focusedcolor>FF19B5FE</focusedcolor>
+                    <focusedcolor>$INFO[Window(Home).Property(MFG.FocusColor)]</focusedcolor>
                     <texturefocus></texturefocus>
                     <texturenofocus></texturenofocus>
                     <textoffsetx>5</textoffsetx>
@@ -1291,7 +1456,7 @@
                         <height>435</height>
                         <texture diffuse="diffuse/poster_mask.png">$INFO[ListItem.Art(poster)]</texture>
                         <aspectratio scalediffuse="false">scale</aspectratio>
-                        <bordertexture border="21" infill="false">overlays/shadow.png</bordertexture>
+                        <bordertexture border="21" infill="false">overlays/fm_rounded_shadow.png</bordertexture>
                         <bordersize>20</bordersize>
                     </control>
                     <!-- Default Version (Square) -->
@@ -1436,6 +1601,19 @@
                         <!-- Fuse 2 Version (Rounded) -->
                         <control type="group">
                             <visible>String.IsEqual(Window(Home).Property(MFG.UseRounded),true)</visible>
+                            <!-- 选中框：比海报略大的圆角色块 -->
+                            <control type="image">
+                                <animation type="Unfocus">
+                                    <effect type="fade" start="100" end="0" time="0" />
+                                </animation>
+                                <left>6</left>
+                                <top>-4</top>
+                                <width>298</width>
+                                <height>443</height>
+                                <texture diffuse="diffuse/poster_mask.png" colordiffuse="$INFO[Window(Home).Property(MFG.FocusColor)]">colors/fm_white.png</texture>
+                                <bordertexture border="21" infill="false">overlays/fm_rounded_shadow.png</bordertexture>
+                                <bordersize>20</bordersize>
+                            </control>
                             <control type="image">
                                 <left>10</left>
                                 <top>0</top>
@@ -1443,7 +1621,7 @@
                                 <height>435</height>
                                 <texture diffuse="diffuse/poster_mask.png">$INFO[ListItem.Art(poster)]</texture>
                                 <aspectratio scalediffuse="false">scale</aspectratio>
-                                <bordertexture border="21" infill="false">overlays/shadow.png</bordertexture>
+                                <bordertexture border="21" infill="false">overlays/fm_rounded_shadow.png</bordertexture>
                                 <bordersize>20</bordersize>
                             </control>
                         </control>
@@ -1451,11 +1629,14 @@
                         <control type="group">
                             <visible>!String.IsEqual(Window(Home).Property(MFG.UseRounded),true)</visible>
                             <control type="image">
+                                <animation type="Unfocus">
+                                    <effect type="fade" start="100" end="0" time="0" />
+                                </animation>
                                 <left>6</left>
                                 <top>-4</top>
                                 <width>298</width>
                                 <height>443</height>
-                                <texture colordiffuse="button_focus">colors/fm_white.png</texture>
+                                <texture colordiffuse="$INFO[Window(Home).Property(MFG.FocusColor)]">colors/fm_white.png</texture>
                                 <bordertexture border="21" infill="false">overlays/fm_shadow.png</bordertexture>
                                 <bordersize>20</bordersize>
                             </control>

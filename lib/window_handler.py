@@ -3,12 +3,154 @@ from .common import notification, log
 from . import t9_helper
 import xbmc
 import xbmcgui
+import xbmcaddon
 import xbmcvfs
 import time
 import threading
 import queue
 import json
 import base64
+
+# T9 多字符映射：数字 -> [数字, 字母...]
+_MULTITAP_MAP = {
+    '2': ['2', 'A', 'B', 'C'],
+    '3': ['3', 'D', 'E', 'F'],
+    '4': ['4', 'G', 'H', 'I'],
+    '5': ['5', 'J', 'K', 'L'],
+    '6': ['6', 'M', 'N', 'O'],
+    '7': ['7', 'P', 'Q', 'R', 'S'],
+    '8': ['8', 'T', 'U', 'V'],
+    '9': ['9', 'W', 'X', 'Y', 'Z'],
+}
+
+_ADDON_PATH = xbmcvfs.translatePath(xbmcaddon.Addon('plugin.video.filteredmovies').getAddonInfo('path'))
+
+
+class CharSelectorDialog(xbmcgui.WindowXMLDialog):
+    """T9 多字符选择弹窗：连续按同一数字键循环选择字符，超时自动确认。"""
+
+    CONFIRM_DELAY = 1.0  # 秒
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.digit = None
+        self.chars = []
+        self.current_index = 0
+        self.selected_char = None
+        self._timer = None
+        self._closed = False
+
+    def setup(self, digit):
+        """在 doModal 之前调用，设置要显示的数字键。"""
+        self.digit = digit
+        self.chars = _MULTITAP_MAP.get(digit, [digit])
+        self.current_index = 0
+        self.selected_char = None
+
+    def onInit(self):
+        self._update_display()
+        self._reset_timer()
+        # 将焦点设到 T9 面板对应数字键上
+        idx = 10 if self.digit == '0' else int(self.digit) - 1
+        xbmc.executebuiltin(f'SetFocus(6050,{idx})')
+
+    def _update_display(self):
+        """根据当前字符数和选中索引，更新 Home Window 属性。"""
+        home = xbmcgui.Window(10000)
+        # 布局槽位: [0]=上, [1]=左, [2]=中(数字), [3]=右, [4]=下
+        # 规则: 第1个字母=左, 第2个字母=上, 第3个字母=右, 第4个字母(如有)=下
+        # 4 chars (3 letters, e.g. 8=TUV): 左=T, 上=U, 中=8, 右=V
+        # 5 chars (4 letters, e.g. 9=WXYZ): 左=W, 上=X, 中=9, 右=Y, 下=Z
+
+        if len(self.chars) == 5:
+            slots = [self.chars[2], self.chars[1], self.chars[0], self.chars[3], self.chars[4]]
+        elif len(self.chars) == 4:
+            slots = [self.chars[2], self.chars[1], self.chars[0], self.chars[3], ""]
+        else:
+            slots = [self.chars[0], "", "", "", ""]
+
+        self._slots = slots
+
+        # 写入属性
+        for i, ch in enumerate(slots):
+            home.setProperty(f"MFG.CharSel.{i}", ch)
+
+        # 活跃索引：current_index 对应 self.chars 中的位置，需映射到 slot 索引
+        char = self.chars[self.current_index]
+        active_slot = "2"  # default center
+        for si, sc in enumerate(slots):
+            if sc == char:
+                active_slot = str(si)
+                break
+        home.setProperty("MFG.CharSel.Active", active_slot)
+
+    def _reset_timer(self):
+        if self._timer:
+            self._timer.cancel()
+        self._timer = threading.Timer(self.CONFIRM_DELAY, self._on_timeout)
+        self._timer.daemon = True
+        self._timer.start()
+
+    def _on_timeout(self):
+        if not self._closed:
+            if self.selected_char is None:
+                self.selected_char = self.chars[self.current_index]
+            self.close()
+
+    def onAction(self, action):
+        action_id = action.getId()
+
+        if action_id == 10 or action_id == 92:  # ESC / NavBack
+            self._cancel_timer()
+            self.selected_char = None
+            self.close()
+            return
+
+        # 方向键直接选择对应字符: 上=slots[0], 左=slots[1], 右=slots[3], 下=slots[4]
+        _DIR_SLOT = {3: 0, 1: 1, 2: 3, 4: 4}  # up=3, left=1, right=2, down=4
+        if action_id in _DIR_SLOT:
+            slot_idx = _DIR_SLOT[action_id]
+            slots = getattr(self, '_slots', [])
+            if slots and slot_idx < len(slots) and slots[slot_idx]:
+                self._cancel_timer()
+                # 显示选中效果
+                xbmcgui.Window(10000).setProperty("MFG.CharSel.Active", str(slot_idx))
+                self.selected_char = slots[slot_idx]
+                # 短暂延迟后关闭，让用户看到选中高亮
+                self._timer = threading.Timer(0.15, self._on_timeout)
+                self._timer.daemon = True
+                self._timer.start()
+            return
+
+        # 同一数字键 → 循环
+        if 58 <= action_id <= 67:
+            pressed_digit = str(action_id - 58)
+            if pressed_digit == self.digit:
+                self.current_index = (self.current_index + 1) % len(self.chars)
+                self._update_display()
+                self._reset_timer()
+            else:
+                # 不同数字键 → 确认当前，让父窗口处理新按键
+                self._cancel_timer()
+                self.selected_char = self.chars[self.current_index]
+                self._pending_digit = pressed_digit
+                self.close()
+            return
+
+    def _cancel_timer(self):
+        if self._timer:
+            self._timer.cancel()
+            self._timer = None
+
+    def close(self):
+        self._closed = True
+        self._cancel_timer()
+        # 清理属性
+        home = xbmcgui.Window(10000)
+        for i in range(5):
+            home.clearProperty(f"MFG.CharSel.{i}")
+        home.clearProperty("MFG.CharSel.Active")
+        super().close()
 
 
 # 定义 Skin String 值到按钮 ID 的映射
@@ -250,23 +392,22 @@ class FilterWindow(xbmcgui.WindowXML):
         # Set property to indicate window is open
         # Clear T9 input
         self.setProperty("t9_input", "")
-        t9_helper.helper.build_memory_cache_async()
         # Load state from Skin into Python memory
         self._load_state_from_skin()
-        
         # 立即初始化筛选高亮
         self.update_highlights()
         
+        
         # 初始化属性，确保非空
         xbmcgui.Window(10000).setProperty("MFG.T9Input", "")
-        xbmcgui.Window(10000).setProperty("MFG.AllowedIDs", "")
         # self.refresh_container()
-
         self.input_queue = queue.Queue()
         self.running = True
         self.worker = threading.Thread(target=self._t9_input_worker)
         self.worker.daemon = True
         self.worker.start()
+        # 异步准备搜索索引，避免阻塞窗口初始化。
+        t9_helper.helper.ensure_search_index_ready_async(show_progress=True)
 
     def _t9_input_worker(self):
         monitor = xbmc.Monitor()
@@ -313,10 +454,10 @@ class FilterWindow(xbmcgui.WindowXML):
                     xbmcgui.Window(10000).setProperty("MFG.T9Input", current_input)
                     last_input_time = time.time()
 
-                if current_input == "9527007":
-                    t9_helper.helper.rebuild_cache()
-                    notification("已重建 T9 缓存...", sound=True)
-                    log("Magic code 9527007 detected. Rebuilding T9 cache.", xbmc.LOGWARNING)
+                if current_input == "000000":
+                    t9_helper.helper.ensure_search_index_ready_async(show_progress=True, skip_check=True)
+                    notification("已开始重建电影/剧集 T9 索引...", sound=True)
+                    log("Magic code 000000 detected. Rebuilding movie C16/tvshow C15 T9 storage.", xbmc.LOGWARNING)
                     current_input = ""
                     xbmcgui.Window(10000).setProperty("MFG.T9Input", current_input)
                     last_input = current_input
@@ -324,14 +465,11 @@ class FilterWindow(xbmcgui.WindowXML):
                 if current_input != last_input:
                     if not current_input:
                         # 输入已清空，立即刷新列表
-                        xbmcgui.Window(10000).setProperty("MFG.AllowedIDs", "")
                         self.refresh_container()
                         last_input_time = time.time()
                         last_input = current_input
                     else:
                         if (time.time() - last_input_time > 0.5):
-                            allowed_ids = t9_helper.helper.search(current_input)
-                            xbmcgui.Window(10000).setProperty("MFG.AllowedIDs", json.dumps(allowed_ids))
                             self.refresh_container()
                             last_input = current_input
                 
@@ -348,7 +486,6 @@ class FilterWindow(xbmcgui.WindowXML):
         
         # 清除全局属性
         xbmcgui.Window(10000).clearProperty("MFG.T9Input")
-        xbmcgui.Window(10000).clearProperty("MFG.AllowedIDs")
 
     def onAction(self, action):
         action_id = action.getId()
@@ -388,17 +525,61 @@ class FilterWindow(xbmcgui.WindowXML):
 
         # 其他输入全部交给worker
         if 58 <= action_id <= 67:  # 0-9
-            self.input_queue.put(('input', str(action_id - 58)))
+            digit = str(action_id - 58)
+            if self._is_digit_letter_mode() and digit in _MULTITAP_MAP:
+                self._open_char_selector(digit)
+            else:
+                self.input_queue.put(('input', digit))
             return
         if action_id in [110, 112, 80]:  # Backspace, Delete, ItemDelete
             self.input_queue.put(('delete', None))
             return
-        if action_id == 13:  # Stop/清空
-            self.input_queue.put(('clear', None))
+        if action_id == 13:  # Stop -> 打开虚拟键盘输入
+            self._open_keyboard_input()
             return
 
         pass
-    
+
+    def _is_digit_letter_mode(self):
+        try:
+            return xbmcaddon.Addon('plugin.video.filteredmovies').getSettingString('input_mode') != 'pure_digit'
+        except Exception:
+            return True
+
+    def _open_char_selector(self, digit):
+        """打开字符选择弹窗，连续按键循环选择。"""
+        while digit:
+            dlg = CharSelectorDialog(
+                'Custom_1117_CharSelector.xml', _ADDON_PATH, 'Default', '1080i')
+            dlg.setup(digit)
+            dlg.doModal()
+            selected = dlg.selected_char
+            pending = getattr(dlg, '_pending_digit', None)
+            del dlg
+            if selected:
+                self.input_queue.put(('input', selected))
+            # 如果用户按了不同的数字键，继续为新数字打开选择器
+            if pending and pending in _MULTITAP_MAP:
+                digit = pending
+            elif pending:
+                # 0 或 1 直接输入
+                self.input_queue.put(('input', pending))
+                digit = None
+            else:
+                digit = None
+
+    def _open_keyboard_input(self):
+        """打开虚拟键盘，将输入结果（大写字母）设为 T9 输入"""
+        current_input = xbmcgui.Window(10000).getProperty("MFG.T9Input") or ""
+        kb = xbmc.Keyboard(current_input, "搜索")
+        kb.doModal()
+        if kb.isConfirmed():
+            text = kb.getText().strip().upper()
+            # 清空后设置新值，让 worker 检测到变化并刷新
+            self.input_queue.put(('clear', None))
+            if text:
+                self.input_queue.put(('input', text))
+
     def _handle_filter_click(self, controlId):
         # 检查 controlId 是否为已知的筛选按钮
         if controlId not in FILTER_ID_TO_INFO_MAP:

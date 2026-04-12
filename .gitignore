@@ -4,3 +4,4 @@ skip_intro_data.json
 dist/
 Custom_5111_MovieFilter_Horizon.xml
 copilot-instructions.md
+dev/cleanup_t9_mysql.py

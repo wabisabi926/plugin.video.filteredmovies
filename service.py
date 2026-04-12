@@ -496,23 +496,33 @@ class SkipCountdownWindow(xbmcgui.WindowXMLDialog):
         except:
             pass
 
-def init_skin_properties():
+def set_rounded():
     # Skin detection logic
     skin_name = get_skin_name()
     # 1. Set Rounded Posters Property
-    if skin_name in ["horizon", "fuse", "zephyr"]:
+    style = xbmcaddon.Addon().getSetting('style') or 'auto'
+    if style == 'rounded':
+        use_rounded = True
+    elif style == 'square':
+        use_rounded = False
+    else:
+        use_rounded = skin_name in ["horizon", "fuse", "zephyr", "minsk"]
+    if use_rounded:
         xbmc.executebuiltin('SetProperty(MFG.UseRounded,true,home)')
     else:
         xbmc.executebuiltin('ClearProperty(MFG.UseRounded,home)')
 
+def init_skin_properties():
+    set_rounded()
+    skin_name = get_skin_name()
     # 2. Set Progress Bar Color Property
     if skin_name == "estuary":
-            xbmc.executebuiltin('SetProperty(MFG.ProgressBarColor,button_focus,home)')
             xbmc.executebuiltin('SetProperty(MFG.FocusColor,button_focus,home)')
+            xbmc.executebuiltin('SetProperty(MFG.ProgressBarColor,button_focus,home)')
             xbmc.executebuiltin('ClearProperty(MFG.CenterWindow,home)')
     else:
-            xbmc.executebuiltin('SetProperty(MFG.ProgressBarColor,FF0097E1,home)')
-            xbmc.executebuiltin('SetProperty(MFG.FocusColor,FF0097E1,home)')
+            xbmc.executebuiltin('SetProperty(MFG.FocusColor,FF19B5FE,home)')
+            xbmc.executebuiltin('SetProperty(MFG.ProgressBarColor,FF19B5FE,home)')
             xbmc.executebuiltin('SetProperty(MFG.CenterWindow,true,home)')
     
     # 3. Initialize Return Targets for Navigation Memory
@@ -551,7 +561,7 @@ if __name__ == '__main__':
     
     # 记录上一次的皮肤 ID，用于检测皮肤切换
     last_skin = get_skin_name()
-
+    last_style = xbmcaddon.Addon().getSetting('style') or 'auto'
     while not monitor.abortRequested():
         # 1. 检测皮肤切换
         current_skin = get_skin_name()
@@ -559,6 +569,13 @@ if __name__ == '__main__':
             log(f"Skin changed from {last_skin} to {current_skin}. Re-initializing properties.")
             last_skin = current_skin
             init_skin_properties()
+        
+        # 检查风格变更
+        current_style = xbmcaddon.Addon().getSetting('style') or 'auto'
+        if current_style != last_style:
+            log(f"Style setting changed from {last_style} to {current_style}. Re-evaluating rounded settings.")
+            last_style = current_style
+            set_rounded()
 
         current_tick_time = time.time()
         dt = current_tick_time - last_tick_time

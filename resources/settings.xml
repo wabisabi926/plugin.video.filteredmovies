@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<settings version="1">
+    <section id="plugin.video.filteredmovies">
+        <category id="general" label="32001" help="">
+            <group id="1">
+                <setting id="input_mode" type="string" label="32002" help="32003">
+                    <level>0</level>
+                    <default>digit_letter</default>
+                    <constraints>
+                        <options>
+                            <option label="32004">digit_letter</option>
+                            <option label="32005">pure_digit</option>
+                        </options>
+                    </constraints>
+                    <control type="spinner" format="string"/>
+                </setting>
+                <setting id="style" type="string" label="32006" help="32007">
+                    <level>0</level>
+                    <default>auto</default>
+                    <constraints>
+                        <options>
+                            <option label="32008">auto</option>
+                            <option label="32009">rounded</option>
+                            <option label="32010">square</option>
+                        </options>
+                    </constraints>
+                    <control type="spinner" format="string"/>
+                </setting>
+            </group>
+        </category>
+    </section>
+</settings>

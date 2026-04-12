@@ -1,0 +1,59 @@
+# Kodi Media Center language file
+# Addon Name: Filtered Movies
+# Addon id: plugin.video.filteredmovies
+msgid ""
+msgstr ""
+"Project-Id-Version: plugin.video.filteredmovies\n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: forbxy\n"
+"Language-Team: English\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgctxt "#32001"
+msgid "General"
+msgstr ""
+
+msgctxt "#32002"
+msgid "Digit key input mode"
+msgstr ""
+
+msgctxt "#32003"
+msgid "In pure digit mode, keys input digits directly; in digit+letter mode, keys open a character selector with cycling selection."
+msgstr ""
+
+msgctxt "#32004"
+msgid "Digit + Letter"
+msgstr ""
+
+msgctxt "#32005"
+msgid "Pure Digit"
+msgstr ""
+
+msgctxt "#32006"
+msgid "UI Style"
+msgstr ""
+
+msgctxt "#32007"
+msgid "Automatically choose rounded or square based on skin, or set manually."
+msgstr ""
+
+msgctxt "#32008"
+msgid "Auto"
+msgstr ""
+
+msgctxt "#32009"
+msgid "Rounded"
+msgstr ""
+
+msgctxt "#32010"
+msgid "Square"
+msgstr ""
+
+msgctxt "#32011"
+msgid "Set Global Background"
+msgstr ""

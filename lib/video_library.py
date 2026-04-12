@@ -11,6 +11,12 @@ def get_filter_val(filters, key, default=None):
         return filters[key]
     return default
 
+def has_t9_filter(filters):
+    t9 = get_filter_val(filters, "filter.t9")
+    if t9 is None:
+        return False
+    return bool(str(t9).strip())
+
 def get_inprogress_episodes_map():
     """
     获取所有正在观看的剧集，并返回 {tvshowid: partial_progress_sum} 的映射。
@@ -71,6 +77,17 @@ def get_inprogress_episodes_map():
 
 def build_filter(filters=None, media_type=None):
     rules = []
+
+    # T9（基于 originaltitle 中追加的 |数字串 进行匹配）
+    t9_val = get_filter_val(filters, "filter.t9")
+    if t9_val is not None:
+        raw_t9 = str(t9_val).strip()
+        if raw_t9 and media_type in ["movie", "tvshow"]:
+            rules.append({
+                "field": "originaltitle",
+                "operator": "contains",
+                "value": raw_t9
+            })
     
     # 类型（genre）
     genre = get_filter_val(filters, "filter.genre")
@@ -519,235 +536,132 @@ def get_movieset_progress_map():
         log(f"Error fetching movieset progress: {e}")
         return {}
 
-def get_items_by_ids(allowed_ids, media_type, limit):
-    """
-    Helper to fetch specific items by ID for a given media type (or all).
-    """
-    if not allowed_ids:
-        return []
-    
-    log(f"Applying T9 ID filter {len(allowed_ids.get('movies', [])) + len(allowed_ids.get('tvshows', [])) + len(allowed_ids.get('sets', []))} items for {media_type}")
-    
-    # Filter allowed_ids based on media_type
-    filtered_ids = []
-    if media_type in ["all", "movie", "documentary", "concert"]:
-        for mid in allowed_ids.get("movies", []):
-            filtered_ids.append({"id": mid, "type": "movie"})
-    if media_type in ["all", "tvshow", "documentary"]:
-        for tid in allowed_ids.get("tvshows", []):
-            filtered_ids.append({"id": tid, "type": "tvshow"})
-    if media_type in ["all", "set"]:
-        for sid in allowed_ids.get("sets", []):
-            filtered_ids.append({"id": sid, "type": "set"})
-    
-    batch_cmds = []
-    items_to_fetch = filtered_ids[:limit]
-    
-    # Define properties
-    movie_props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "resume", "runtime", "lastplayed", "playcount", "genre", "file", "plot"]
-    tv_props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "episode", "watchedepisodes", "lastplayed", "playcount", "genre", "file", "plot"]
-    set_props = ["title", "thumbnail", "art", "plot", "playcount"]
-    
-    for i, item_data in enumerate(items_to_fetch):
-        itype = item_data.get("type", "movie")
-        iid = item_data.get("id")
-        
-        method = ""
-        id_param = ""
-        props = []
-        
-        if itype == "movie":
-            method = "VideoLibrary.GetMovieDetails"
-            id_param = "movieid"
-            props = movie_props
-        elif itype == "tvshow":
-            method = "VideoLibrary.GetTVShowDetails"
-            id_param = "tvshowid"
-            props = tv_props
-        elif itype == "set":
-            method = "VideoLibrary.GetMovieSetDetails"
-            id_param = "setid"
-            props = set_props
-        
-        if method:
-            cmd = {
-                "jsonrpc": "2.0",
-                "method": method,
-                "params": {
-                    id_param: int(iid),
-                    "properties": props
-                },
-                "id": str(i)
-            }
-            batch_cmds.append(cmd)
-    
-    if not batch_cmds:
-        return []
-
-    resp = xbmc.executeJSONRPC(json.dumps(batch_cmds))
-    try:
-        results = json.loads(resp)
-    except:
-        log("Failed to parse batch response")
-        return []
-    
-    items = []
-    
-    # Fetch partial progress for TV shows if needed
-    partial_progress_map = {}
-    if any(cmd.get("method") == "VideoLibrary.GetTVShowDetails" for cmd in batch_cmds):
-            partial_progress_map = get_inprogress_episodes_map()
-
-    if isinstance(results, list):
-        for res in results:
-            if "result" in res:
-                res_val = res["result"]
-                if "moviedetails" in res_val:
-                    item = res_val["moviedetails"]
-                    item["media_type"] = "movie"
-                    items.append(item)
-                elif "tvshowdetails" in res_val:
-                    item = res_val["tvshowdetails"]
-                    item["media_type"] = "tvshow"
-                    tid = item.get("tvshowid")
-                    if tid:
-                        item["partial_progress"] = partial_progress_map.get(tid, 0.0)
-                    items.append(item)
-                elif "setdetails" in res_val:
-                    item = res_val["setdetails"]
-                    item["media_type"] = "set"
-                    items.append(item)
-    
-    return items
-
-def get_movie_items(filters, limit, allowed_ids=None):
+def get_movie_items(filters, limit):
     sort_obj = build_sort(filters)
-    
-    if allowed_ids is not None:
-        items = get_items_by_ids(allowed_ids, "movie", limit)
-    else:
-        filter_obj = build_filter(filters, media_type="movie")
-        props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "resume", "runtime", "lastplayed", "playcount", "genre", "file", "plot"]
-        
-        params = {
-            "jsonrpc": "2.0", "id": "movies",
-            "method": "VideoLibrary.GetMovies",
-            "params": {
-                "properties": props,
-                "limits": {"start": 0, "end": limit},
-                "sort": sort_obj
-            }
+
+    filter_obj = build_filter(filters, media_type="movie")
+    props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "resume", "runtime", "lastplayed", "playcount", "genre", "file", "plot"]
+
+    params = {
+        "jsonrpc": "2.0", "id": "movies",
+        "method": "VideoLibrary.GetMovies",
+        "params": {
+            "properties": props,
+            "limits": {"start": 0, "end": limit},
+            "sort": sort_obj
         }
-        if filter_obj: params["params"]["filter"] = filter_obj
-        
-        resp = xbmc.executeJSONRPC(json.dumps(params))
-        items = json.loads(resp).get("result", {}).get("movies", [])
-        for item in items: item["media_type"] = "movie"
+    }
+    if filter_obj: params["params"]["filter"] = filter_obj
+
+    resp = xbmc.executeJSONRPC(json.dumps(params))
+    items = json.loads(resp).get("result", {}).get("movies", [])
+    for item in items: item["media_type"] = "movie"
 
     return sort_items_locally(items, sort_obj)
 
-def get_tvshow_items(filters, limit, allowed_ids=None):
+def get_tvshow_items(filters, limit):
     sort_obj = build_sort(filters)
-    
-    if allowed_ids is not None:
-        items = get_items_by_ids(allowed_ids, "tvshow", limit)
-    else:
-        filter_obj = build_filter(filters, media_type="tvshow")
-        props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "episode", "watchedepisodes", "lastplayed", "playcount", "genre", "file", "plot"]
-        
-        params = {
-            "jsonrpc": "2.0", "id": "tvshows",
-            "method": "VideoLibrary.GetTVShows",
-            "params": {
-                "properties": props,
-                "limits": {"start": 0, "end": limit},
-                "sort": sort_obj
-            }
+
+    filter_obj = build_filter(filters, media_type="tvshow")
+    props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "episode", "watchedepisodes", "lastplayed", "playcount", "genre", "file", "plot"]
+
+    params = {
+        "jsonrpc": "2.0", "id": "tvshows",
+        "method": "VideoLibrary.GetTVShows",
+        "params": {
+            "properties": props,
+            "limits": {"start": 0, "end": limit},
+            "sort": sort_obj
         }
-        if filter_obj: params["params"]["filter"] = filter_obj
-        
-        resp = xbmc.executeJSONRPC(json.dumps(params))
-        items = json.loads(resp).get("result", {}).get("tvshows", [])
-        
-        # Attach partial progress
-        partial_progress_map = get_inprogress_episodes_map()
-        for item in items:
-            item["media_type"] = "tvshow"
-            tid = item.get("tvshowid")
-            if tid:
-                item["partial_progress"] = partial_progress_map.get(tid, 0.0)
+    }
+    if filter_obj: params["params"]["filter"] = filter_obj
+
+    resp = xbmc.executeJSONRPC(json.dumps(params))
+    items = json.loads(resp).get("result", {}).get("tvshows", [])
+
+    # Attach partial progress
+    partial_progress_map = get_inprogress_episodes_map()
+    for item in items:
+        item["media_type"] = "tvshow"
+        tid = item.get("tvshowid")
+        if tid:
+            item["partial_progress"] = partial_progress_map.get(tid, 0.0)
 
     return sort_items_locally(items, sort_obj)
 
-def get_set_items(filters, limit, allowed_ids=None):
+def get_set_items(filters, limit):
     sort_obj = build_sort(filters)
-    
-    if allowed_ids is not None:
-        items = get_items_by_ids(allowed_ids, "set", limit)
-    else:
-        # Complex filter logic for sets
-        region_val = get_filter_val(filters, "filter.region")
-        rating_active = any(k.startswith("filter.rating") for k in filters.keys()) if filters else False
-        genre_val = get_filter_val(filters, "filter.genre")
-        year_val = get_filter_val(filters, "filter.year")
-        
-        has_complex = (region_val and region_val != "地区") or rating_active or (genre_val and genre_val != "类型") or (year_val and year_val != "年份")
-        
-        # Initial fetch
-        # Always fetch a large number to allow local filtering of single-movie sets
-        fetch_limit = 20000
-        
-        props = ["title", "thumbnail", "art", "plot", "playcount"]
-        params = {
-            "jsonrpc": "2.0", "id": "sets",
-            "method": "VideoLibrary.GetMovieSets",
-            "params": {
-                "properties": props,
-                "limits": {"start": 0, "end": fetch_limit},
-                "sort": sort_obj
-            }
-        }
-        
-        # Basic filter (title/letter only)
-        basic_filters = {}
-        if filters and "filter.letter" in filters:
-            basic_filters["filter.letter"] = filters["filter.letter"]
-        set_basic_filter = build_filter(basic_filters, media_type="set")
-        if set_basic_filter: params["params"]["filter"] = set_basic_filter
-        
-        resp = xbmc.executeJSONRPC(json.dumps(params))
-        items = json.loads(resp).get("result", {}).get("sets", [])
-        
-        # Post-filter if complex
-        if has_complex:
-            try:
-                movie_filters_dict = filters.copy() if filters else {}
-                if "filter.letter" in movie_filters_dict: del movie_filters_dict["filter.letter"]
-                
-                movie_filter = build_filter(movie_filters_dict, media_type="movie")
-                set_rule = {"field": "set", "operator": "isnot", "value": ""}
-                
-                if movie_filter:
-                    if "and" in movie_filter: movie_filter["and"].append(set_rule)
-                    else: movie_filter = {"and": [movie_filter, set_rule]}
-                else:
-                    movie_filter = {"and": [set_rule]}
-                
-                params_lookup = {
-                    "jsonrpc": "2.0", "method": "VideoLibrary.GetMovies",
-                    "params": {"properties": ["setid"], "filter": movie_filter},
-                    "id": "set_complex_lookup"
-                }
-                resp_lookup = xbmc.executeJSONRPC(json.dumps(params_lookup))
-                movies = json.loads(resp_lookup).get("result", {}).get("movies", [])
-                valid_set_ids = {m.get("setid") for m in movies if m.get("setid")}
-                
-                items = [x for x in items if x.get("setid") in valid_set_ids]
-                # items = items[:limit] # Don't slice here yet, wait for single-movie filter
-            except Exception as e:
-                log(f"Error in set complex post-filter: {e}")
 
-        for item in items: item["media_type"] = "set"
+    # Complex filter logic for sets
+    region_val = get_filter_val(filters, "filter.region")
+    rating_active = any(k.startswith("filter.rating") for k in filters.keys()) if filters else False
+    genre_val = get_filter_val(filters, "filter.genre")
+    year_val = get_filter_val(filters, "filter.year")
+
+    has_complex = (region_val and region_val != "地区") or rating_active or (genre_val and genre_val != "类型") or (year_val and year_val != "年份")
+
+    # Initial fetch
+    # Always fetch a large number to allow local filtering of single-movie sets
+    fetch_limit = 20000
+
+    props = ["title", "thumbnail", "art", "plot", "playcount"]
+    params = {
+        "jsonrpc": "2.0", "id": "sets",
+        "method": "VideoLibrary.GetMovieSets",
+        "params": {
+            "properties": props,
+            "limits": {"start": 0, "end": fetch_limit},
+            "sort": sort_obj
+        }
+    }
+
+    # Basic filter (title/letter only, GetMovieSets 不支持 plot 等字段过滤)
+    basic_filters = {}
+    if filters and "filter.letter" in filters:
+        basic_filters["filter.letter"] = filters["filter.letter"]
+    set_basic_filter = build_filter(basic_filters, media_type="set")
+    if set_basic_filter: params["params"]["filter"] = set_basic_filter
+
+    resp = xbmc.executeJSONRPC(json.dumps(params))
+    items = json.loads(resp).get("result", {}).get("sets", [])
+
+    # T9 本地过滤（GetMovieSets 不支持 plot filter）
+    t9_val = get_filter_val(filters, "filter.t9")
+    if t9_val is not None:
+        t9_token = str(t9_val).strip()
+        if t9_token:
+            items = [x for x in items if t9_token in (x.get("plot") or "")]
+
+    # Post-filter if complex
+    if has_complex:
+        try:
+            movie_filters_dict = filters.copy() if filters else {}
+            if "filter.letter" in movie_filters_dict: del movie_filters_dict["filter.letter"]
+
+            movie_filter = build_filter(movie_filters_dict, media_type="movie")
+            set_rule = {"field": "set", "operator": "isnot", "value": ""}
+
+            if movie_filter:
+                if "and" in movie_filter: movie_filter["and"].append(set_rule)
+                else: movie_filter = {"and": [movie_filter, set_rule]}
+            else:
+                movie_filter = {"and": [set_rule]}
+
+            params_lookup = {
+                "jsonrpc": "2.0", "method": "VideoLibrary.GetMovies",
+                "params": {"properties": ["setid"], "filter": movie_filter},
+                "id": "set_complex_lookup"
+            }
+            resp_lookup = xbmc.executeJSONRPC(json.dumps(params_lookup))
+            movies = json.loads(resp_lookup).get("result", {}).get("movies", [])
+            valid_set_ids = {m.get("setid") for m in movies if m.get("setid")}
+
+            items = [x for x in items if x.get("setid") in valid_set_ids]
+            # items = items[:limit] # Don't slice here yet, wait for single-movie filter
+        except Exception as e:
+            log(f"Error in set complex post-filter: {e}")
+
+    for item in items: item["media_type"] = "set"
 
     # Attach set progress and filter single-movie sets
     set_progress_map = get_movieset_progress_map()
@@ -778,184 +692,170 @@ def get_set_items(filters, limit, allowed_ids=None):
 
     return sort_items_locally(items, sort_obj)[:limit]
 
-def get_concert_items(filters, limit, allowed_ids=None):
-    # Concerts are movies with genre="Music"
+def get_concert_items(filters, limit):
+    # 演唱会仅查询电影，并在原筛选条件上追加音乐类型条件。
     sort_obj = build_sort(filters)
-    
-    if allowed_ids is not None:
-        items = get_items_by_ids(allowed_ids, "concert", limit)
-        # Strict filter for concerts in T9
-        items = [x for x in items if len(x.get("genre", [])) == 1 and (x.get("genre", [])[0] == "音乐" or x.get("genre", [])[0] == "Music")]
-    else:
-        # Add Music genre rule
-        music_rule = {"field": "genre", "operator": "is", "value": "音乐"}
-        
-        # 忽略传入的 genre 筛选，强制使用音乐
-        temp_filters = filters.copy() if filters else {}
-        if "filter.genre" in temp_filters:
-            del temp_filters["filter.genre"]
+    music_rule = {"field": "genre", "operator": "is", "value": "音乐"}
 
-        filter_obj = build_filter(temp_filters, media_type="movie") # Use movie filter base
-        
-        if filter_obj:
-            if "and" in filter_obj: filter_obj["and"].append(music_rule)
-            else: filter_obj = {"and": [filter_obj, music_rule]}
+    def add_rule(f_obj, rule):
+        if f_obj:
+            if "and" in f_obj:
+                f_obj["and"].append(rule)
+            else:
+                f_obj = {"and": [f_obj, rule]}
         else:
-            filter_obj = {"and": [music_rule]}
-            
-        props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "resume", "runtime", "lastplayed", "playcount", "genre", "file", "plot"]
-        params = {
-            "jsonrpc": "2.0", "id": "movies",
-            "method": "VideoLibrary.GetMovies",
-            "params": {
-                "properties": props,
-                "limits": {"start": 0, "end": 2000}, # 扩大获取范围以便后置筛选
-                "sort": sort_obj,
-                "filter": filter_obj
-            }
+            f_obj = {"and": [rule]}
+        return f_obj
+
+    # 忽略外部 genre 选择，演唱会固定按音乐类型筛。
+    temp_filters = filters.copy() if filters else {}
+    if "filter.genre" in temp_filters:
+        del temp_filters["filter.genre"]
+
+    filter_obj = add_rule(build_filter(temp_filters, media_type="movie"), music_rule)
+
+    props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "resume", "runtime", "lastplayed", "playcount", "genre", "file", "plot"]
+    params = {
+        "jsonrpc": "2.0", "id": "movies",
+        "method": "VideoLibrary.GetMovies",
+        "params": {
+            "properties": props,
+            "limits": {"start": 0, "end": limit},
+            "sort": sort_obj,
+            "filter": filter_obj
         }
-        resp = xbmc.executeJSONRPC(json.dumps(params))
-        items = json.loads(resp).get("result", {}).get("movies", [])
-        
-        # 后置筛选：严格检查类型是否仅为“音乐”
-        filtered_items = []
-        for item in items:
-            genres = item.get("genre", [])
-            if len(genres) == 1 and (genres[0] == "音乐"):
-                item["media_type"] = "concert"
-                filtered_items.append(item)
-        items = filtered_items
+    }
 
-    return sort_items_locally(items, sort_obj)[:limit]
+    resp = xbmc.executeJSONRPC(json.dumps(params))
+    items = json.loads(resp).get("result", {}).get("movies", [])
 
-def get_documentary_items(filters, limit, allowed_ids=None):
+    # 严格条件：类型必须且只能有一条，并且该条是“音乐”。
+    filtered_items = []
+    for item in items:
+        genres = item.get("genre", [])
+        if len(genres) == 1 and genres[0] == "音乐":
+            item["media_type"] = "concert"
+            filtered_items.append(item)
+
+    return sort_items_locally(filtered_items, sort_obj)[:limit]
+
+def get_documentary_items(filters, limit):
     sort_obj = build_sort(filters)
-    
-    if allowed_ids is not None:
-        items = get_items_by_ids(allowed_ids, "documentary", limit)
-        # Strict filter for docs in T9
-        items = [x for x in items if any(g in x.get("genre", []) for g in ["纪录", "记录", "Documentary", "纪录片"])]
-    else:
-        # Fetch both movies and tvshows with doc genre
-        doc_rule = {
-            "or": [
-                {"field": "genre", "operator": "contains", "value": "纪录"},
-                {"field": "genre", "operator": "contains", "value": "记录"},
-                {"field": "genre", "operator": "contains", "value": "Documentary"}
-            ]
+
+    # Fetch both movies and tvshows with doc genre
+    doc_rule = {
+        "or": [
+            {"field": "genre", "operator": "contains", "value": "纪录"},
+            {"field": "genre", "operator": "contains", "value": "记录"},
+            {"field": "genre", "operator": "contains", "value": "Documentary"}
+        ]
+    }
+
+    def add_rule(f_obj, rule):
+        if f_obj:
+            if "and" in f_obj: f_obj["and"].append(rule)
+            else: f_obj = {"and": [f_obj, rule]}
+        else: f_obj = {"and": [rule]}
+        return f_obj
+
+    filter_obj_movie = add_rule(build_filter(filters, media_type="movie"), doc_rule)
+    filter_obj_tv = add_rule(build_filter(filters, media_type="tvshow"), doc_rule)
+
+    # Batch fetch
+    movie_props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "file", "resume", "runtime", "lastplayed", "plot", "playcount"]
+    tv_props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "episode", "watchedepisodes", "file", "lastplayed", "plot"]
+
+    batch_cmds = [
+        {
+            "jsonrpc": "2.0", "id": "movies", "method": "VideoLibrary.GetMovies",
+            "params": {"properties": movie_props, "limits": {"start": 0, "end": limit}, "sort": sort_obj, "filter": filter_obj_movie}
+        },
+        {
+            "jsonrpc": "2.0", "id": "tvshows", "method": "VideoLibrary.GetTVShows",
+            "params": {"properties": tv_props, "limits": {"start": 0, "end": limit}, "sort": sort_obj, "filter": filter_obj_tv}
         }
-        
-        def add_rule(f_obj, rule):
-            if f_obj:
-                if "and" in f_obj: f_obj["and"].append(rule)
-                else: f_obj = {"and": [f_obj, rule]}
-            else: f_obj = {"and": [rule]}
-            return f_obj
+    ]
 
-        filter_obj_movie = add_rule(build_filter(filters, media_type="movie"), doc_rule)
-        filter_obj_tv = add_rule(build_filter(filters, media_type="tvshow"), doc_rule)
-        
-        # Batch fetch
-        movie_props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "file", "resume", "runtime", "lastplayed", "plot", "playcount"]
-        tv_props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "episode", "watchedepisodes", "file", "lastplayed", "plot"]
-        
-        batch_cmds = [
-            {
-                "jsonrpc": "2.0", "id": "movies", "method": "VideoLibrary.GetMovies",
-                "params": {"properties": movie_props, "limits": {"start": 0, "end": limit}, "sort": sort_obj, "filter": filter_obj_movie}
-            },
-            {
-                "jsonrpc": "2.0", "id": "tvshows", "method": "VideoLibrary.GetTVShows",
-                "params": {"properties": tv_props, "limits": {"start": 0, "end": limit}, "sort": sort_obj, "filter": filter_obj_tv}
-            }
-        ]
-        
-        items = []
-        try:
-            resp = xbmc.executeJSONRPC(json.dumps(batch_cmds))
-            results = json.loads(resp)
-            if isinstance(results, list):
-                for res in results:
-                    if "result" in res:
-                        if "movies" in res["result"]:
-                            for m in res["result"]["movies"]:
-                                m["media_type"] = "movie"
-                                items.append(m)
-                        elif "tvshows" in res["result"]:
-                            for t in res["result"]["tvshows"]:
-                                t["media_type"] = "tvshow"
-                                items.append(t)
-        except Exception as e:
-            log(f"Error fetching doc items: {e}")
+    items = []
+    try:
+        resp = xbmc.executeJSONRPC(json.dumps(batch_cmds))
+        results = json.loads(resp)
+        if isinstance(results, list):
+            for res in results:
+                if "result" in res:
+                    if "movies" in res["result"]:
+                        for m in res["result"]["movies"]:
+                            m["media_type"] = "movie"
+                            items.append(m)
+                    elif "tvshows" in res["result"]:
+                        for t in res["result"]["tvshows"]:
+                            t["media_type"] = "tvshow"
+                            items.append(t)
+    except Exception as e:
+        log(f"Error fetching doc items: {e}")
 
     return sort_items_locally(items, sort_obj)[:limit]
 
-def get_mixed_items(filters, limit, allowed_ids=None):
+def get_mixed_items(filters, limit):
     sort_obj = build_sort(filters)
-    
-    if allowed_ids is not None:
-        items = get_items_by_ids(allowed_ids, "all", limit)
-    else:
-        # Fetch all movies and tvshows
-        filter_obj_movie = build_filter(filters, media_type="movie")
-        filter_obj_tv = build_filter(filters, media_type="tvshow")
-        
-        movie_props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "file", "resume", "runtime", "lastplayed", "plot", "playcount"]
-        tv_props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "episode", "watchedepisodes", "file", "lastplayed", "plot"]
-        
-        batch_cmds = [
-            {
-                "jsonrpc": "2.0", "id": "movies", "method": "VideoLibrary.GetMovies",
-                "params": {"properties": movie_props, "limits": {"start": 0, "end": limit}, "sort": sort_obj}
-            },
-            {
-                "jsonrpc": "2.0", "id": "tvshows", "method": "VideoLibrary.GetTVShows",
-                "params": {"properties": tv_props, "limits": {"start": 0, "end": limit}, "sort": sort_obj}
-            }
-        ]
-        if filter_obj_movie: batch_cmds[0]["params"]["filter"] = filter_obj_movie
-        if filter_obj_tv: batch_cmds[1]["params"]["filter"] = filter_obj_tv
-        
-        items = []
-        try:
-            resp = xbmc.executeJSONRPC(json.dumps(batch_cmds))
-            results = json.loads(resp)
-            if isinstance(results, list):
-                for res in results:
-                    if "result" in res:
-                        if "movies" in res["result"]:
-                            for m in res["result"]["movies"]:
-                                m["media_type"] = "movie"
-                                items.append(m)
-                        elif "tvshows" in res["result"]:
-                            for t in res["result"]["tvshows"]:
-                                t["media_type"] = "tvshow"
-                                items.append(t)
-        except Exception as e:
-            log(f"Error fetching mixed items: {e}")
+
+    # Fetch all movies and tvshows
+    filter_obj_movie = build_filter(filters, media_type="movie")
+    filter_obj_tv = build_filter(filters, media_type="tvshow")
+
+    movie_props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "file", "resume", "runtime", "lastplayed", "plot", "playcount"]
+    tv_props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "episode", "watchedepisodes", "file", "lastplayed", "plot"]
+
+    batch_cmds = [
+        {
+            "jsonrpc": "2.0", "id": "movies", "method": "VideoLibrary.GetMovies",
+            "params": {"properties": movie_props, "limits": {"start": 0, "end": limit}, "sort": sort_obj}
+        },
+        {
+            "jsonrpc": "2.0", "id": "tvshows", "method": "VideoLibrary.GetTVShows",
+            "params": {"properties": tv_props, "limits": {"start": 0, "end": limit}, "sort": sort_obj}
+        }
+    ]
+    if filter_obj_movie: batch_cmds[0]["params"]["filter"] = filter_obj_movie
+    if filter_obj_tv: batch_cmds[1]["params"]["filter"] = filter_obj_tv
+
+    items = []
+    try:
+        resp = xbmc.executeJSONRPC(json.dumps(batch_cmds))
+        results = json.loads(resp)
+        if isinstance(results, list):
+            for res in results:
+                if "result" in res:
+                    if "movies" in res["result"]:
+                        for m in res["result"]["movies"]:
+                            m["media_type"] = "movie"
+                            items.append(m)
+                    elif "tvshows" in res["result"]:
+                        for t in res["result"]["tvshows"]:
+                            t["media_type"] = "tvshow"
+                            items.append(t)
+    except Exception as e:
+        log(f"Error fetching mixed items: {e}")
 
     return sort_items_locally(items, sort_obj)[:limit]
 
-def jsonrpc_get_items(filters=None, limit=500, allowed_ids=None):
+def jsonrpc_get_items(filters=None, limit=500):
     media_type = get_filter_val(filters, "filter.mediatype", "all")
 
-    allow_len = "None"
-    if allowed_ids is not None:
-        allow_len = sum(len(v) for v in allowed_ids.values())
-    log(f"jsonrpc_get_items: type={media_type}, limit={limit}, allowed_ids={allow_len}")
+    log(f"jsonrpc_get_items: type={media_type}, limit={limit}")
 
     if media_type == "电影":
-        return get_movie_items(filters, limit, allowed_ids)
+        return get_movie_items(filters, limit)
     elif media_type == "剧集":
-        return get_tvshow_items(filters, limit, allowed_ids)
+        return get_tvshow_items(filters, limit)
     elif media_type == "系列电影":
-        return get_set_items(filters, limit, allowed_ids)
+        return get_set_items(filters, limit)
     elif media_type == "演唱会":
-        return get_concert_items(filters, limit, allowed_ids)
+        return get_concert_items(filters, limit)
     elif media_type == "纪录片":
-        return get_documentary_items(filters, limit, allowed_ids)
+        return get_documentary_items(filters, limit)
     else:
-        return get_mixed_items(filters, limit, allowed_ids)
+        return get_mixed_items(filters, limit)
 
 def fix_movie_set_poster(items):
     sets_needing_art = []

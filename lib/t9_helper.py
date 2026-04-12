@@ -1,113 +1,100 @@
 # -*- coding: utf-8 -*-
 from .common import log
-import os
-import json
 import xbmcvfs
 import xbmc
 import itertools
+import xbmcgui
+import os
+import json
 import threading
 
+
+_T9_MAP = {
+    'A': '2', 'B': '2', 'C': '2',
+    'D': '3', 'E': '3', 'F': '3',
+    'G': '4', 'H': '4', 'I': '4',
+    'J': '5', 'K': '5', 'L': '5',
+    'M': '6', 'N': '6', 'O': '6',
+    'P': '7', 'Q': '7', 'R': '7', 'S': '7',
+    'T': '8', 'U': '8', 'V': '8',
+    'W': '9', 'X': '9', 'Y': '9', 'Z': '9',
+    '0': '0', '1': '1', '2': '2', '3': '3', '4': '4',
+    '5': '5', '6': '6', '7': '7', '8': '8', '9': '9',
+}
+
+_MAX_ORIGINALTITLE_BYTES = 64 * 1024
+
+# 数字的中文读音首字母映射
+_DIGIT_PINYIN_INITIAL = {
+    '0': 'L', '1': 'Y', '2': 'E', '3': 'S', '4': 'S',
+    '5': 'W', '6': 'L', '7': 'Q', '8': 'B', '9': 'J',
+}
+
+
 class T9Helper:
+    UPDATE_BATCH_SIZE = 20
+
     def __init__(self, addon_id="plugin.video.filteredmovies"):
         self.ADDON_ID = addon_id
         self.ADDON_PATH = xbmcvfs.translatePath(f"special://home/addons/{self.ADDON_ID}/")
         self.ADDON_DATA_PATH = xbmcvfs.translatePath(f"special://profile/addon_data/{self.ADDON_ID}/")
-        
+
         if not os.path.exists(self.ADDON_DATA_PATH):
             os.makedirs(self.ADDON_DATA_PATH)
 
-        self.CACHE_FILE = os.path.join(self.ADDON_DATA_PATH, "movie_t9_cache.json")
         self.CHAR_MAP_FILE = os.path.join(self.ADDON_PATH, "resources", "char_map.json")
-        
-        self.CACHE_VERSION = 4
-        t = addon_id.replace('.', '_')
+
         self.char_map = None
+        self._ensure_thread = None
+        self._ensure_lock = threading.Lock()
 
-        self.cached_t9_map = None
+    def ensure_search_index_ready_async(self, show_progress=True, skip_check=False):
+        """
+        异步确保电影/剧集搜索索引已准备，避免阻塞调用方。
+        若已有准备任务在运行，则跳过重复启动。
+        skip_check=True 时跳过 unprepared 检查，直接全量比对更新。
+        """
+        with self._ensure_lock:
+            if self._ensure_thread is not None and self._ensure_thread.is_alive():
+                log("Search index prepare is already running. Skip duplicate ensure request.")
+                return False
 
-        self.synced = False
-    
-    def search(self, input_seq):
-        """
-        根据输入的数字序列搜索匹配的电影、剧集或系列。
-        返回匹配的 ID 列表。
-        """
-        
-        cache = self._get_cached_data()
-        if not cache:
-            return {"movies": [], "tvshows": [], "sets": []}
-        
-            
-        matches = {
-            "movies": [],
-            "tvshows": [],
-            "sets": []
-        }
-        
-        # 搜索电影
-        movies = cache.get("movies", {})
-        for mid, codes in movies.items():
-            for code in codes:
-                if code.startswith(input_seq):
-                    matches["movies"].append(int(mid))
-                    break
-                    
-        # 搜索剧集
-        tvshows = cache.get("tvshows", {})
-        for mid, codes in tvshows.items():
-            for code in codes:
-                if code.startswith(input_seq):
-                    matches["tvshows"].append(int(mid))
-                    break
+            self._ensure_thread = threading.Thread(
+                target=self.ensure_search_index_ready,
+                args=(show_progress, skip_check),
+                daemon=True,
+            )
+            self._ensure_thread.start()
 
-        # 搜索系列
-        sets = cache.get("sets", {})
-        for mid, codes in sets.items():
-            for code in codes:
-                if code.startswith(input_seq):
-                    matches["sets"].append(int(mid))
-                    break
-        
-        return matches
-    
-    def build_memory_cache_async(self):
-        """
-        异步构建或更新内存缓存。
-        """
-        t = threading.Thread(target=self.build_memory_cache_sync)
-        t.daemon = True
-        t.start()
-    
-    def build_memory_cache_sync(self):
-        """
-        同步构建或更新内存缓存。
-        """
-        cache = self._get_cached_data()
-        # 3. 如果还是空的，初始化一个新的
-        if cache is None:
-            cache = {"movies": {}, "tvshows": {}, "sets": {}, "version": self.CACHE_VERSION}
-            
-        # 与库同步（核心逻辑）
-        cache = self._sync_with_library(cache)
-        
-        # 写回内存属性
-        self.cached_t9_map = cache
-        self.synced = True
-    
+        return True
 
-    def rebuild_cache(self):
+    def ensure_search_index_ready(self, show_progress=True, skip_check=False):
         """
-        强制重建缓存
+        同步检查并确保电影/剧集搜索索引已准备。
+        通过 JSON-RPC 查询 originaltitle 中是否仍存在缺少数字索引的条目来判断。
+        任一类型存在未准备条目时执行电影 C16 + 剧集 C09 的准备流程。
+        skip_check=True 时跳过检查，直接全量比对更新。
         """
-        log("Forcing T9 Cache Rebuild requested.")
-        if os.path.exists(self.CACHE_FILE):
-            try:
-                os.remove(self.CACHE_FILE)
-                log("Deleted old T9 cache file.")
-            except Exception as e:
-                log(f"Error delete old cache file: {e}", xbmc.LOGERROR)
-        self.build_memory_cache_sync()
-        self.synced = True
+        if not skip_check:
+            movie_unprepared = self._has_unprepared_originaltitle_entries("movie")
+            tvshow_unprepared = self._has_unprepared_originaltitle_entries("tvshow")
+
+            if not movie_unprepared and not tvshow_unprepared:
+                log("ensure_search_index_ready finished: query check passed, all ready.")
+                return True
+
+            missing_targets = []
+            if movie_unprepared:
+                missing_targets.append("movie C16")
+            if tvshow_unprepared:
+                missing_targets.append("tvshow C09")
+            log(
+                f"Detected unprepared {' and '.join(missing_targets)} via originaltitle query. "
+                "Start preparing movie C16 and tvshow C09."
+            )
+        prepared = self._prepare_all_items(show_progress=show_progress)
+        log(f"ensure_search_index_ready finished: prepared={prepared}.")
+        return prepared
 
     def _load_char_map(self):
         """
@@ -127,43 +114,24 @@ class T9Helper:
         """
         self.char_map = None
 
-    def _get_t9_map(self):
-        """
-        获取字母到 T9 数字键的映射。
-        """
-        return {
-            'A': '2', 'B': '2', 'C': '2',
-            'D': '3', 'E': '3', 'F': '3',
-            'G': '4', 'H': '4', 'I': '4',
-            'J': '5', 'K': '5', 'L': '5',
-            'M': '6', 'N': '6', 'O': '6',
-            'P': '7', 'Q': '7', 'R': '7', 'S': '7',
-            'T': '8', 'U': '8', 'V': '8',
-            'W': '9', 'X': '9', 'Y': '9', 'Z': '9',
-            '0': '0', '1': '1', '2': '2', '3': '3', '4': '4',
-            '5': '5', '6': '6', '7': '7', '8': '8', '9': '9'
-        }
-
     def _generate_t9_codes(self, title):
         """
-        为给定的标题生成所有可能的 T9 数字序列。
-        支持多音字组合。
+        为完整标题生成所有可能的 T9 全拼数字串（支持多音字组合）。
         """
-        process_title = title[:10] # 仅处理前10个字符以提高性能
-        
+        process_title = title or ""
+
         self._load_char_map()
-        t9_map = self._get_t9_map()
-        
+
         full_options = []
-        
+
         for char in process_title:
             char_full = set()
-            
+
             # 尝试获取汉字的拼音数据
             pinyin_data = self.char_map.get(char)
             if not pinyin_data:
                 pinyin_data = self.char_map.get(char.upper())
-            
+
             if pinyin_data:
                 # 如果是列表说明有多音字
                 readings = pinyin_data if isinstance(pinyin_data, list) else [pinyin_data]
@@ -172,254 +140,433 @@ class T9Helper:
                     full_digits = ""
                     for pc in p:
                         pc_upper = pc.upper()
-                        if pc_upper in t9_map:
-                            full_digits += t9_map[pc_upper]
+                        if pc_upper in _T9_MAP:
+                            full_digits += _T9_MAP[pc_upper]
                     if full_digits:
                         char_full.add(full_digits)
             else:
-                # 非汉字字符（英文/数字）直接转换
+                # 非汉字字符（英文/数字）直接转换，其他符号忽略
                 c = char.upper()
-                if c in t9_map:
-                    digit = t9_map[c]
+                if c in _T9_MAP:
+                    digit = _T9_MAP[c]
                     char_full.add(digit)
-            
+
             if char_full:
-                full_options.append(list(char_full))
-        
+                full_options.append(sorted(char_full))
+
         results = set()
-        
+
         # 生成所有可能的组合
         if full_options:
             for combo in itertools.product(*full_options):
                 results.add("".join(combo))
-        
-        return list(results)
 
-    def _get_all_movies_rpc(self):
+        return sorted(results)
+
+    def _generate_initial_codes(self, title):
+        """
+        为完整标题生成所有可能的首字母索引串（支持多音字组合）。
+        """
+        process_title = title or ""
+
+        self._load_char_map()
+
+        initial_options = []
+
+        for char in process_title:
+            char_initials = set()
+
+            pinyin_data = self.char_map.get(char)
+            if not pinyin_data:
+                pinyin_data = self.char_map.get(char.upper())
+
+            if pinyin_data:
+                readings = pinyin_data if isinstance(pinyin_data, list) else [pinyin_data]
+                for p in readings:
+                    if not p or not isinstance(p, str):
+                        continue
+                    initial = p[0].upper()
+                    if "A" <= initial <= "Z":
+                        char_initials.add(initial)
+            else:
+                c = char.upper()
+                if "A" <= c <= "Z":
+                    char_initials.add(c)
+
+            # 数字字符始终保留数字本身及其中文读音首字母
+            c = char.upper()
+            if "0" <= c <= "9":
+                char_initials.add(c)
+                if c in _DIGIT_PINYIN_INITIAL:
+                    char_initials.add(_DIGIT_PINYIN_INITIAL[c])
+
+            if char_initials:
+                initial_options.append(sorted(char_initials))
+
+        results = set()
+        if initial_options:
+            for combo in itertools.product(*initial_options):
+                results.add("".join(combo))
+
+        return sorted(results)
+
+    def _jsonrpc(self, payload):
+        try:
+            response = xbmc.executeJSONRPC(json.dumps(payload))
+            result = json.loads(response)
+            if isinstance(result, dict) and "error" in result:
+                log(f"JSON-RPC error: {result.get('error')}")
+            return result
+        except Exception as e:
+            log(f"JSON-RPC call failed: {e}", xbmc.LOGERROR)
+            return {}
+
+    def _jsonrpc_batch(self, payloads):
+        if not payloads:
+            return []
+        try:
+            response = xbmc.executeJSONRPC(json.dumps(payloads))
+            result = json.loads(response)
+            if isinstance(result, dict) and "error" in result:
+                log(f"JSON-RPC batch error: {result.get('error')}")
+            return result
+        except Exception as e:
+            log(f"JSON-RPC batch call failed: {e}", xbmc.LOGERROR)
+            return {}
+
+    def _get_all_movies_rpc(self, properties=None):
+        props = properties or ["title", "originaltitle"]
         json_query = {
             "jsonrpc": "2.0",
             "method": "VideoLibrary.GetMovies",
             "params": {
-                "properties": ["title"],
+                "properties": props,
                 "sort": {"method": "none"}
             },
             "id": 1
         }
-        response = xbmc.executeJSONRPC(json.dumps(json_query))
-        result = json.loads(response)
+        result = self._jsonrpc(json_query)
         return result.get('result', {}).get('movies', [])
 
-    def _get_all_tvshows_rpc(self):
+    def _get_all_tvshows_rpc(self, properties=None):
+        props = properties or ["title", "originaltitle"]
         json_query = {
             "jsonrpc": "2.0",
             "method": "VideoLibrary.GetTVShows",
             "params": {
-                "properties": ["title"],
+                "properties": props,
                 "sort": {"method": "none"}
             },
             "id": 1
         }
-        response = xbmc.executeJSONRPC(json.dumps(json_query))
-        result = json.loads(response)
+        result = self._jsonrpc(json_query)
         return result.get('result', {}).get('tvshows', [])
 
-    def _get_all_sets_rpc(self):
+    def _get_all_moviesets_rpc(self, properties=None):
+        props = properties or ["title", "plot"]
         json_query = {
             "jsonrpc": "2.0",
             "method": "VideoLibrary.GetMovieSets",
             "params": {
-                "properties": ["title"],
+                "properties": props,
                 "sort": {"method": "none"}
             },
             "id": 1
         }
-        response = xbmc.executeJSONRPC(json.dumps(json_query))
-        result = json.loads(response)
+        result = self._jsonrpc(json_query)
         return result.get('result', {}).get('sets', [])
 
-    def _get_cached_data(self):
+    def _has_unprepared_originaltitle_entries(self, media_type):
         """
-        获取缓存数据，优先从内存获取，其次从文件。
+        检查是否存在 originaltitle 缺少数字索引的条目。
+        仅拉取 1 条用于 existence check。
         """
-        if self.cached_t9_map is None:
-            if os.path.exists(self.CACHE_FILE):
-                try:
-                    with open(self.CACHE_FILE, "r", encoding="utf-8") as f:
-                        self.cached_t9_map = json.load(f)
-                except Exception as e:
-                    log(f"ERROR load cache from file: {e}", xbmc.LOGERROR)
-        return self.cached_t9_map
-
-    def _check_needs_update(self, item_type, cache):
-        """
-        Check if cache needs update by comparing count, ID sets, and a random item's T9 codes.
-        Fetches all IDs/Titles first (efficient enough) to avoid unsupported sort-by-id queries.
-        """
-        if item_type == "movies":
+        if media_type == "movie":
             method = "VideoLibrary.GetMovies"
-            id_key = "movieid"
-            cache_key = "movies"
-        elif item_type == "tvshows":
-            method = "VideoLibrary.GetTVShows"
-            id_key = "tvshowid"
-            cache_key = "tvshows"
+            result_key = "movies"
         else:
-            return False
+            method = "VideoLibrary.GetTVShows"
+            result_key = "tvshows"
 
-        # 1. Get ALL items (ID + Title) from Remote
-        # Requesting "title" property ensures we have the raw title for T9 generation
-        json_query = {
+        query = {
             "jsonrpc": "2.0",
             "method": method,
             "params": {
-                "properties": ["title"],
-                "sort": {"method": "dateadded", "order": "descending"} # Use a valid sort method or none
+                "properties": ["title", "originaltitle"],
+                "sort": {"method": "none"},
+                "limits": {"start": 0, "end": 1},
+                "filter": {
+                    "and": [
+                        {
+                            "field": "originaltitle",
+                            "operator": "doesnotcontain",
+                            "value": "|0",
+                        },
+                        {
+                            "field": "originaltitle",
+                            "operator": "doesnotcontain",
+                            "value": "|1",
+                        },
+                        {
+                            "field": "originaltitle",
+                            "operator": "doesnotcontain",
+                            "value": "|2",
+                        },
+                        {
+                            "field": "originaltitle",
+                            "operator": "doesnotcontain",
+                            "value": "|3",
+                        },
+                        {
+                            "field": "originaltitle",
+                            "operator": "doesnotcontain",
+                            "value": "|4",
+                        },
+                        {
+                            "field": "originaltitle",
+                            "operator": "doesnotcontain",
+                            "value": "|5",
+                        },
+                        {
+                            "field": "originaltitle",
+                            "operator": "doesnotcontain",
+                            "value": "|6",
+                        },
+                        {
+                            "field": "originaltitle",
+                            "operator": "doesnotcontain",
+                            "value": "|7",
+                        },
+                        {
+                            "field": "originaltitle",
+                            "operator": "doesnotcontain",
+                            "value": "|8",
+                        },
+                        {
+                            "field": "originaltitle",
+                            "operator": "doesnotcontain",
+                            "value": "|9",
+                        },
+                    ]
+                },
             },
-            "id": "check_all"
+            "id": f"search_index_unprepared_{media_type}",
         }
-        res = json.loads(xbmc.executeJSONRPC(json.dumps(json_query)))
-        
-        if "error" in res:
-            log(f"Error checking update for {item_type}: {res.get('error')}")
+
+        result = self._jsonrpc(query)
+        if not isinstance(result, dict) or "error" in result:
+            # 查询异常时保守处理：视为未准备，触发准备流程。
+            log(f"Query unprepared {media_type} failed, fallback to prepare.", xbmc.LOGWARNING)
             return True
 
-        remote_items = res.get("result", {}).get(cache_key, [])
-        total_remote = res.get("result", {}).get("limits", {}).get("total", 0)
+        entries = result.get("result", {}).get(result_key, [])
+        if not entries:
+            return False
 
-        # If limits not in response, use len
-        if not total_remote and remote_items:
-            total_remote = len(remote_items)
+        sample = entries[0] if isinstance(entries[0], dict) else {}
+        sample_id_key = "movieid" if media_type == "movie" else "tvshowid"
+        sample_id = sample.get(sample_id_key)
+        sample_title = sample.get("title", "") or ""
+        sample_original = sample.get("originaltitle", "") or ""
 
-        # Local checks
-        local_cache = cache.get(cache_key, {})
-        local_total = len(local_cache)
+        log(
+            f"Unprepared {media_type} sample: id={sample_id}, title={sample_title}, "
+            f"originaltitle={sample_original}"
+        )
+        return True
 
-        if total_remote == 0:
-             return local_total > 0
+    # media_type -> (rpc_method, id_param, value_param)
+    _MEDIA_RPC_MAP = {
+        "movie": ("VideoLibrary.SetMovieDetails", "movieid", "originaltitle"),
+        "tvshow": ("VideoLibrary.SetTVShowDetails", "tvshowid", "originaltitle"),
+        "set": ("VideoLibrary.SetMovieSetDetails", "setid", "plot"),
+    }
 
-        if local_total != total_remote:
-            log(f"[{item_type}] Count mismatch: Remote={total_remote}, Local={local_total}")
-            return True
+    def _set_item_field(self, media_type, item_id, value):
+        rpc_method, id_param, value_param = self._MEDIA_RPC_MAP[media_type]
+        query = {
+            "jsonrpc": "2.0",
+            "method": rpc_method,
+            "params": {
+                id_param: int(item_id),
+                value_param: value,
+            },
+            "id": f"set_{media_type}_{item_id}",
+        }
+        result = self._jsonrpc(query)
+        return "error" not in result
 
-        # Check ID Set consistency
-        remote_ids = set(str(item.get(id_key)) for item in remote_items)
-        local_ids = set(local_cache.keys())
-        
-        if remote_ids != local_ids:
-            # Check for differences
-            missing_in_local = remote_ids - local_ids
-            missing_in_remote = local_ids - remote_ids
-            
-            if missing_in_local:
-                 log(f"[{item_type}] Local cache missing IDs: {list(missing_in_local)[:5]}...")
-            if missing_in_remote:
-                 log(f"[{item_type}] Local cache has extra IDs: {list(missing_in_remote)[:5]}...")
-            
-            return True
-
-        # 2. Check a random item's T9 code
-        if remote_items:
-            import random
-            random_item = random.choice(remote_items)
-            rnd_id = str(random_item.get(id_key))
-            rnd_title = random_item.get("title", "")
-            
-            # We already confirmed ID exists in local with the set check above
-            if rnd_id in local_cache:
-                remote_codes = set(self._generate_t9_codes(rnd_title))
-                local_codes = set(local_cache[rnd_id])
-                
-                if remote_codes != local_codes:
-                    log(f"[{item_type}] T9 Code mismatch for Random ID {rnd_id} ({rnd_title})")
-                    return True
-        
-        return False
-
-    def _sync_with_library(self, cache):
+    def _flush_field_updates(self, media_type, pending_updates):
         """
-        将本地缓存与 Kodi 媒体库进行同步。
-        使用由 _check_needs_update 定义的策略进行检查。
+        批量提交字段更新，批量失败或单项失败时回退到单条提交。
+        pending_updates: [{"id": ..., "value": ...}, ...]
         """
-        dirty = False
-        self._load_char_map()
+        if not pending_updates:
+            return 0
 
-        # 检查磁盘上是否存在缓存文件。
-        if not os.path.exists(self.CACHE_FILE):
-             dirty = True
-        
-        if "movies" not in cache: cache["movies"] = {}
-        if "tvshows" not in cache: cache["tvshows"] = {}
-        if "sets" not in cache: cache["sets"] = {}
+        rpc_method, id_param, value_param = self._MEDIA_RPC_MAP[media_type]
 
-        # --- 电影 (Movies) ---
+        payloads = []
+        ordered_ids = []
+        for idx, item in enumerate(pending_updates):
+            item_id = int(item["id"])
+            req_id = f"t9_{media_type}_{item_id}_{idx}"
+            ordered_ids.append(req_id)
+            payloads.append(
+                {
+                    "jsonrpc": "2.0",
+                    "method": rpc_method,
+                    "params": {
+                        id_param: item_id,
+                        value_param: item["value"],
+                    },
+                    "id": req_id,
+                }
+            )
+
+        updated = 0
+        result = self._jsonrpc_batch(payloads)
+
+        def fallback_one(single_item):
+            return self._set_item_field(media_type, single_item["id"], single_item["value"])
+
+        # 批量能力不可用时，整批回退单条更新。
+        if not isinstance(result, list):
+            log(f"Batch update unavailable for {media_type}, fallback to single updates.")
+            for item in pending_updates:
+                if fallback_one(item):
+                    updated += 1
+            return updated
+
+        result_by_id = {}
+        for entry in result:
+            if isinstance(entry, dict) and "id" in entry:
+                result_by_id[str(entry.get("id"))] = entry
+
+        for idx, item in enumerate(pending_updates):
+            req_id = ordered_ids[idx]
+            entry = result_by_id.get(req_id)
+
+            # 缺失响应或响应错误时，回退该条。
+            if not entry or "error" in entry:
+                if entry and "error" in entry:
+                    log(f"Batch item error ({media_type}, id={item['id']}): {entry.get('error')}")
+                if fallback_one(item):
+                    updated += 1
+                continue
+
+            updated += 1
+
+        return updated
+
+    def _update_progress(self, dialog, processed, total, kind, title):
+        if not dialog or total <= 0:
+            return
+        percent = int((processed * 100) / total)
+        line1 = f"正在准备搜索索引: {processed}/{total}"
+        line2 = f"{kind}: {title or '未知标题'}"
         try:
-            if self._check_needs_update("movies", cache):
-                log("Movies cache needs update. Rebuilding all movies and sets...")
-                
-                # Full rebuild for movies
-                movies = self._get_all_movies_rpc()
-                cache["movies"] = {} # Clear existing
-                
-                for m in movies:
-                    mid = str(m.get("movieid"))
-                    title = m.get("title", "")
-                    if title:
-                        cache["movies"][mid] = self._generate_t9_codes(title)
-                
-                log(f"Rebuilt {len(cache['movies'])} movies.")
+            dialog.update(percent, line1, line2)
+        except TypeError:
+            dialog.update(percent, line1)
 
-                # Rebuild sets as well since movies update often implies set changes or we just do it to be safe
-                sets = self._get_all_sets_rpc()
-                cache["sets"] = {}
-                for s in sets:
-                    mid = str(s.get("setid"))
-                    title = s.get("title", "")
-                    if title:
-                        cache["sets"][mid] = self._generate_t9_codes(title)
-                log(f"Rebuilt {len(cache['sets'])} sets.")
-                
-                dirty = True
-            else:
-                log("Movies cache is up-to-date.")
+    def _compute_target_original(self, source_title, current_original):
+        generated_t9_codes = self._generate_t9_codes(source_title)
+        generated_initial_codes = self._generate_initial_codes(source_title)
 
-        except Exception as e:
-            log(f"Error updating movies: {e}")
-            import traceback
-            traceback.print_exc()
+        existing_parts = set(current_original.split("|")) if current_original else set()
 
-        # --- 剧集 (TV Shows) ---
-        try:
-            if self._check_needs_update("tvshows", cache):
-                log("TVShows cache needs update. Rebuilding all tvshows...")
-                
-                # Full rebuild for tvshows
-                tvshows = self._get_all_tvshows_rpc()
-                cache["tvshows"] = {} # Clear existing
+        missing_t9 = [c for c in generated_t9_codes if c not in existing_parts]
+        missing_initial = [c for c in generated_initial_codes if c not in existing_parts]
 
-                for t in tvshows:
-                    mid = str(t.get("tvshowid"))
-                    title = t.get("title", "")
-                    if title:
-                        cache["tvshows"][mid] = self._generate_t9_codes(title)
-                
-                log(f"Rebuilt {len(cache['tvshows'])} tvshows.")
-                dirty = True
-            else:
-                 log("TVShows cache is up-to-date.")
+        result = current_original or ""
+        for part in missing_t9 + missing_initial:
+            candidate = f"{result}|{part}" if result else part
+            if len(candidate.encode("utf-8")) > _MAX_ORIGINALTITLE_BYTES:
+                break
+            result = candidate
+        if result and "|" not in result:
+            result = "|" + result
 
-        except Exception as e:
-            log(f"Error updating tvshows: {e}")
+        if not any(f"|{d}" in result for d in "0123456789"):
+            candidate = f"{result}|0" if result else "|0"
+            if len(candidate.encode("utf-8")) <= _MAX_ORIGINALTITLE_BYTES:
+                result = candidate
 
-        if dirty:
+        return result
+
+    def _prepare_all_items(self, show_progress=True):
+        dialog = None
+        if show_progress:
+            dialog = xbmcgui.DialogProgress()
             try:
-                with open(self.CACHE_FILE, "w", encoding="utf-8") as f:
-                    json.dump(cache, f, ensure_ascii=False)
-                    
-                log(f"Cache updated and saved to {self.CACHE_FILE}")
-            except Exception as e:
-                log(f"Error saving cache: {e}")
-        self._clear_char_map() # Clear char map from memory after use
-        return cache
+                dialog.create("搜索索引准备中", "正在准备电影、剧集和合集搜索索引...")
+            except TypeError:
+                dialog.create("搜索索引准备中")
+
+        movies = self._get_all_movies_rpc(properties=["title", "originaltitle"])
+        tvshows = self._get_all_tvshows_rpc(properties=["title", "originaltitle"])
+        moviesets = self._get_all_moviesets_rpc(properties=["title", "plot"])
+
+        total = len(movies) + len(tvshows) + len(moviesets)
+        if total <= 0:
+            if dialog:
+                dialog.close()
+            return True
+
+        processed = 0
+        updated = 0
+        canceled = False
+
+        # (items, id_key, media_type, kind, value_field)
+        media_groups = [
+            (movies, "movieid", "movie", "电影", "originaltitle"),
+            (tvshows, "tvshowid", "tvshow", "剧集", "originaltitle"),
+            (moviesets, "setid", "set", "合集", "plot"),
+        ]
+
+        self._load_char_map()
+        try:
+            for items, id_key, media_type, kind, value_field in media_groups:
+                pending_updates = []
+                for item in items:
+                    processed += 1
+                    if dialog and dialog.iscanceled():
+                        canceled = True
+                        break
+
+                    item_id = item.get(id_key)
+                    title = item.get("title", "") or ""
+                    current_value = item.get(value_field, "") or ""
+                    source_title = title.strip()
+
+                    if item_id is not None and source_title:
+                        target_value = self._compute_target_original(source_title, current_value)
+                        if target_value != current_value:
+                            pending_updates.append(
+                                {"id": item_id, "value": target_value}
+                            )
+                            if len(pending_updates) >= self.UPDATE_BATCH_SIZE:
+                                updated += self._flush_field_updates(media_type, pending_updates)
+                                pending_updates = []
+
+                    self._update_progress(dialog, processed, total, kind, title)
+
+                if not canceled and pending_updates:
+                    updated += self._flush_field_updates(media_type, pending_updates)
+                if canceled:
+                    break
+        finally:
+            self._clear_char_map()
+            if dialog:
+                dialog.close()
+
+        if canceled:
+            log("Search index prepare canceled by user.", xbmc.LOGWARNING)
+            return False
+
+        log(f"Search index prepare finished. updated={updated}, total={total}")
+        return True
 
 
 

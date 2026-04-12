@@ -1,6 +1,6 @@
 <addon id="plugin.video.filteredmovies"
        name="Filtered Movies"
-       version="1.2.2"
+       version="1.3.0"
        provider-name="forbxy">
 
     <requires>
@@ -19,7 +19,7 @@
     <extension point="kodi.context.item">
         <menu id="kodi.core.main">
             <item library="default_context_menu_hook.py">
-                <label>设置全局背景</label>
+                <label>$ADDON[plugin.video.filteredmovies 32011]</label>
                 <visible>!String.IsEmpty(ListItem.Art(fanart))</visible>
             </item>
         </menu>

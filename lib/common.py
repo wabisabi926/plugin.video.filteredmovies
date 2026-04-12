@@ -20,6 +20,8 @@ def get_skin_name():
         skin_name = "estuary"
     elif "zephyr" in current_skin_id:
         skin_name = "zephyr"
+    elif "minsk" in current_skin_id:
+        skin_name = "minsk"
         
     return skin_name
 

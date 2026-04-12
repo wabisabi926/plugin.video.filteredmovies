@@ -59,7 +59,7 @@ def prefetch_data_for_window():
         
         # 3. Fetch items
         log(f"Prefetching with filters: {filters}")
-        items = library.jsonrpc_get_items(filters=filters, limit=300, allowed_ids=None)
+        items = library.jsonrpc_get_items(filters=filters, limit=300)
         items = library.fix_movie_set_poster(items)
         
         # 4. Save to cache
@@ -1135,7 +1135,6 @@ def filter_list(reload_param):
             except: pass
 
     import base64
-    from lib import t9_helper
     
     # 1. Load state from Skin
     filter_state = {}
@@ -1162,25 +1161,22 @@ def filter_list(reload_param):
 
     # 3. T9 Input
     t9_input = xbmcgui.Window(10000).getProperty("MFG.T9Input")
-    allowed_ids_str = xbmcgui.Window(10000).getProperty("MFG.AllowedIDs")
-    allowed_ids = None
-    limit=300
+    limit = 300
     if t9_input:
-        if allowed_ids_str:
-            try:
-                allowed_ids = json.loads(allowed_ids_str)
-            except Exception as e:
-                log(f"Error parsing allowed_ids: {e}")
-                allowed_ids = t9_helper.helper.search(t9_input)
-        else:
-            allowed_ids = t9_helper.helper.search(t9_input)
-        limit = 24
-        # 当有T9输入时，只保留影视范围
-        keys_to_keep = ["filter.mediatype"]
-        filters = {k: v for k, v in filters.items() if k in keys_to_keep}
+        t9_digits = "".join(ch for ch in str(t9_input) if ch.isdigit())
+        if t9_digits or t9_input.strip():
+            # 纯数字输入加 | 前缀避免与原始标题内容误匹配，含字母时直接传递
+            t9_value = t9_input.strip()
+            if t9_value.isdigit():
+                t9_value = f"|{t9_value}"
+            filters["filter.t9"] = t9_value
+            limit = 24
+            # 当有T9输入时，只保留影视范围和T9条件
+            keys_to_keep = ["filter.mediatype", "filter.t9"]
+            filters = {k: v for k, v in filters.items() if k in keys_to_keep}
 
     # 4. Get Items
-    items = library.jsonrpc_get_items(filters=filters, limit=limit, allowed_ids=allowed_ids)
+    items = library.jsonrpc_get_items(filters=filters, limit=limit)
     items = library.fix_movie_set_poster(items)
     # 5. Populate List
     
