@@ -38,7 +38,7 @@
                 </setting>
                 <setting id="search_limit" type="integer" label="32014" help="32015">
                     <level>0</level>
-                    <default>72</default>
+                    <default>36</default>
                     <constraints>
                         <minimum>6</minimum>
                         <step>6</step>
