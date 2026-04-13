@@ -46,6 +46,11 @@
                     </constraints>
                     <control type="slider" format="integer"/>
                 </setting>
+                <setting id="enable_set_search" type="boolean" label="32016" help="32017">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                </setting>
             </group>
         </category>
     </section>

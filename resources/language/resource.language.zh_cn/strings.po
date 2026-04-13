@@ -73,3 +73,11 @@ msgstr "搜索结果最大数量"
 msgctxt "#32015"
 msgid "Maximum number of items returned when searching."
 msgstr "搜索时返回的最大条目数。"
+
+msgctxt "#32016"
+msgid "Enable movie set search"
+msgstr "启用系列电影搜索"
+
+msgctxt "#32017"
+msgid "When enabled, movie sets can be searched by T9/initials. After toggling this option, enter 000000 (six zeros) in T9 input to manually rebuild or clean up the index."
+msgstr "启用后可通过T9/首字母搜索系列电影。切换开关后需要在T9输入000000（六个0）以手动清理或创建一次索引。"

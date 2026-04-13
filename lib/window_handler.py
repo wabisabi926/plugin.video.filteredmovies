@@ -454,6 +454,18 @@ class FilterWindow(xbmcgui.WindowXML):
                     xbmcgui.Window(10000).setProperty("MFG.T9Input", current_input)
                     last_input_time = time.time()
 
+                    # 系列电影搜索未启用时，拦截输入
+                    if current_input and current_input != "000000":
+                        mt_state = self.filter_state.get('filter.mediatype', {})
+                        if mt_state.get('value') == '系列电影':
+                            enable_set_search = xbmcaddon.Addon().getSetting('enable_set_search') == 'true'
+                            if not enable_set_search:
+                                notification("系列电影搜索未启用，请在设置中开启")
+                                current_input = ""
+                                xbmcgui.Window(10000).setProperty("MFG.T9Input", current_input)
+                                last_input = current_input
+                                continue
+
                 if current_input == "000000":
                     t9_helper.helper.ensure_search_index_ready_async(show_progress=True, skip_check=True)
                     notification("已开始重建电影/剧集 T9 索引...", sound=True)

@@ -73,3 +73,11 @@ msgstr ""
 msgctxt "#32015"
 msgid "Maximum number of items returned when searching."
 msgstr ""
+
+msgctxt "#32016"
+msgid "Enable movie set search"
+msgstr ""
+
+msgctxt "#32017"
+msgid "When enabled, movie sets can be searched by T9/initials. After toggling this option, enter 000000 (six zeros) in T9 input to manually rebuild or clean up the index."
+msgstr ""

@@ -1168,15 +1168,15 @@ def filter_list(reload_param):
     if t9_input:
         t9_digits = "".join(ch for ch in str(t9_input) if ch.isdigit())
         if t9_digits or t9_input.strip():
-            # 纯数字输入加 | 前缀避免与原始标题内容误匹配，含字母时直接传递
-            t9_value = t9_input.strip()
-            if t9_value.isdigit():
-                t9_value = f"|{t9_value}"
-            filters["filter.t9"] = t9_value
-            limit = search_limit
-            # 当有T9输入时，只保留影视范围、排序和T9条件
-            keys_to_keep = ["filter.mediatype", "filter.sort", "filter.t9"]
-            filters = {k: v for k, v in filters.items() if k in keys_to_keep}
+                # 纯数字输入加 | 前缀避免与原始标题内容误匹配，含字母时直接传递
+                t9_value = t9_input.strip()
+                if t9_value.isdigit():
+                    t9_value = f"|{t9_value}"
+                filters["filter.t9"] = t9_value
+                limit = search_limit
+                # 当有T9输入时，只保留影视范围、排序和T9条件
+                keys_to_keep = ["filter.mediatype", "filter.sort", "filter.t9"]
+                filters = {k: v for k, v in filters.items() if k in keys_to_keep}
 
     # 4. Get Items
     items = library.jsonrpc_get_items(filters=filters, limit=limit)

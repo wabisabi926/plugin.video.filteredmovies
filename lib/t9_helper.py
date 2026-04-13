@@ -533,6 +533,27 @@ class T9Helper:
 
         return result
 
+    def _strip_set_index(self, source_title, current_plot):
+        """移除之前追加到 set plot 末尾的搜索索引码。"""
+        if not current_plot:
+            return current_plot
+
+        def _is_index_code(s):
+            return s and s.isascii() and s.isalnum() and s == s.upper()
+
+        if "|" not in current_plot:
+            # 整个plot就是一个索引码（原始plot为空时的情况）
+            return "" if _is_index_code(current_plot) else current_plot
+
+        parts = current_plot.split("|")
+        # 从末尾向前移除所有索引码
+        while len(parts) > 1 and _is_index_code(parts[-1]):
+            parts.pop()
+        # 检查剩余的唯一部分是否也是索引码
+        if len(parts) == 1 and _is_index_code(parts[0]):
+            return ""
+        return "|".join(parts)
+
     def _prepare_all_items(self, show_progress=True):
         dialog = None
         if show_progress:
@@ -544,6 +565,9 @@ class T9Helper:
 
         movies = self._get_all_movies_rpc(properties=["title", "originaltitle"])
         tvshows = self._get_all_tvshows_rpc(properties=["title", "originaltitle"])
+
+        import xbmcaddon
+        enable_set_search = xbmcaddon.Addon(self.ADDON_ID).getSetting('enable_set_search') == 'true'
         moviesets = self._get_all_moviesets_rpc(properties=["title", "plot"])
 
         total = len(movies) + len(tvshows) + len(moviesets)
@@ -579,7 +603,10 @@ class T9Helper:
                     source_title = title.strip()
 
                     if item_id is not None and source_title:
-                        target_value = self._compute_target_original(source_title, current_value, media_type)
+                        if media_type == "set" and not enable_set_search:
+                            target_value = self._strip_set_index(source_title, current_value)
+                        else:
+                            target_value = self._compute_target_original(source_title, current_value, media_type)
                         if target_value != current_value:
                             pending_updates.append(
                                 {"id": item_id, "value": target_value}
