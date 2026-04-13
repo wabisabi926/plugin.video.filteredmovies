@@ -59,7 +59,8 @@ def prefetch_data_for_window():
         
         # 3. Fetch items
         log(f"Prefetching with filters: {filters}")
-        items = library.jsonrpc_get_items(filters=filters, limit=300)
+        filter_limit = int(ADDON.getSetting('filter_limit') or 300)
+        items = library.jsonrpc_get_items(filters=filters, limit=filter_limit)
         items = library.fix_movie_set_poster(items)
         
         # 4. Save to cache
@@ -1161,7 +1162,9 @@ def filter_list(reload_param):
 
     # 3. T9 Input
     t9_input = xbmcgui.Window(10000).getProperty("MFG.T9Input")
-    limit = 300
+    filter_limit = int(ADDON.getSetting('filter_limit') or 300)
+    search_limit = int(ADDON.getSetting('search_limit') or 72)
+    limit = filter_limit
     if t9_input:
         t9_digits = "".join(ch for ch in str(t9_input) if ch.isdigit())
         if t9_digits or t9_input.strip():
@@ -1170,9 +1173,9 @@ def filter_list(reload_param):
             if t9_value.isdigit():
                 t9_value = f"|{t9_value}"
             filters["filter.t9"] = t9_value
-            limit = 24
-            # 当有T9输入时，只保留影视范围和T9条件
-            keys_to_keep = ["filter.mediatype", "filter.t9"]
+            limit = search_limit
+            # 当有T9输入时，只保留影视范围、排序和T9条件
+            keys_to_keep = ["filter.mediatype", "filter.sort", "filter.t9"]
             filters = {k: v for k, v in filters.items() if k in keys_to_keep}
 
     # 4. Get Items

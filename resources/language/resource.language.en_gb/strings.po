@@ -57,3 +57,19 @@ msgstr ""
 msgctxt "#32011"
 msgid "Set Global Background"
 msgstr ""
+
+msgctxt "#32012"
+msgid "Filter result limit"
+msgstr ""
+
+msgctxt "#32013"
+msgid "Maximum number of items returned when browsing with filters."
+msgstr ""
+
+msgctxt "#32014"
+msgid "Search result limit"
+msgstr ""
+
+msgctxt "#32015"
+msgid "Maximum number of items returned when searching."
+msgstr ""

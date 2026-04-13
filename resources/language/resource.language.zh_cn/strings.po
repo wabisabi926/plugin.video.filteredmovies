@@ -24,7 +24,7 @@ msgstr "数字键输入模式"
 
 msgctxt "#32003"
 msgid "In pure digit mode, keys input digits directly; in digit+letter mode, keys open a character selector with cycling selection."
-msgstr "纯数字模式下按键直接输入数字；数字+字母模式下按键弹出字符选择器，连续按键循环选择。"
+msgstr "纯数字模式下按键直接输入数字；数字+字母模式下按键弹出字符选择器，连续按键循环或按方向键选择。"
 
 msgctxt "#32004"
 msgid "Digit + Letter"
@@ -57,3 +57,19 @@ msgstr "方角"
 msgctxt "#32011"
 msgid "Set Global Background"
 msgstr "设置全局背景"
+
+msgctxt "#32012"
+msgid "Filter result limit"
+msgstr "筛选结果最大数量"
+
+msgctxt "#32013"
+msgid "Maximum number of items returned when browsing with filters."
+msgstr "使用筛选浏览时返回的最大条目数。"
+
+msgctxt "#32014"
+msgid "Search result limit"
+msgstr "搜索结果最大数量"
+
+msgctxt "#32015"
+msgid "Maximum number of items returned when searching."
+msgstr "搜索时返回的最大条目数。"

@@ -480,21 +480,49 @@ class T9Helper:
         except TypeError:
             dialog.update(percent, line1)
 
-    def _compute_target_original(self, source_title, current_original):
+    def _compute_target_original(self, source_title, current_original, media_type="set"):
         generated_t9_codes = self._generate_t9_codes(source_title)
         generated_initial_codes = self._generate_initial_codes(source_title)
 
-        existing_parts = set(current_original.split("|")) if current_original else set()
+        if media_type in ("movie", "tvshow"):
+            # 电影/剧集：首字母码|基础标题|T9码，每次重建确保顺序正确
+            all_codes = set(generated_t9_codes) | set(generated_initial_codes)
+            # 基础标题 = 去掉所有已知码 + 疑似旧码（纯大写字母或纯数字或大写字母+数字组合）后剩余的部分
+            if current_original:
+                base_parts = [p for p in current_original.split("|")
+                              if p and p not in all_codes and not (p.isascii() and p.isalnum() and p == p.upper())]
+            else:
+                base_parts = []
+            base_title = "|".join(base_parts)
 
-        missing_t9 = [c for c in generated_t9_codes if c not in existing_parts]
-        missing_initial = [c for c in generated_initial_codes if c not in existing_parts]
+            # 按正确顺序拼接：首字母码 | 基础标题 | T9码
+            parts = []
+            for code in generated_initial_codes:
+                parts.append(code)
+            if base_title:
+                parts.append(base_title)
+            for code in generated_t9_codes:
+                parts.append(code)
 
-        result = current_original or ""
-        for part in missing_t9 + missing_initial:
-            candidate = f"{result}|{part}" if result else part
-            if len(candidate.encode("utf-8")) > _MAX_ORIGINALTITLE_BYTES:
-                break
-            result = candidate
+            result = ""
+            for part in parts:
+                candidate = f"{result}|{part}" if result else part
+                if len(candidate.encode("utf-8")) > _MAX_ORIGINALTITLE_BYTES:
+                    break
+                result = candidate
+        else:
+            # sets: 保持原逻辑，增量追加到末尾
+            existing_parts = set(current_original.split("|")) if current_original else set()
+            missing_t9 = [c for c in generated_t9_codes if c not in existing_parts]
+            missing_initial = [c for c in generated_initial_codes if c not in existing_parts]
+
+            result = current_original or ""
+            for part in missing_t9 + missing_initial:
+                candidate = f"{result}|{part}" if result else part
+                if len(candidate.encode("utf-8")) > _MAX_ORIGINALTITLE_BYTES:
+                    break
+                result = candidate
+
         if result and "|" not in result:
             result = "|" + result
 
@@ -551,7 +579,7 @@ class T9Helper:
                     source_title = title.strip()
 
                     if item_id is not None and source_title:
-                        target_value = self._compute_target_original(source_title, current_value)
+                        target_value = self._compute_target_original(source_title, current_value, media_type)
                         if target_value != current_value:
                             pending_updates.append(
                                 {"id": item_id, "value": target_value}

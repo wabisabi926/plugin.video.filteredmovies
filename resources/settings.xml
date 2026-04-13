@@ -26,6 +26,26 @@
                     </constraints>
                     <control type="spinner" format="string"/>
                 </setting>
+                <setting id="filter_limit" type="integer" label="32012" help="32013">
+                    <level>0</level>
+                    <default>300</default>
+                    <constraints>
+                        <minimum>6</minimum>
+                        <step>6</step>
+                        <maximum>1200</maximum>
+                    </constraints>
+                    <control type="slider" format="integer"/>
+                </setting>
+                <setting id="search_limit" type="integer" label="32014" help="32015">
+                    <level>0</level>
+                    <default>72</default>
+                    <constraints>
+                        <minimum>6</minimum>
+                        <step>6</step>
+                        <maximum>1200</maximum>
+                    </constraints>
+                    <control type="slider" format="integer"/>
+                </setting>
             </group>
         </category>
     </section>

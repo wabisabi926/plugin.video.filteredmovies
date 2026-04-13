@@ -540,7 +540,7 @@ def get_movie_items(filters, limit):
     sort_obj = build_sort(filters)
 
     filter_obj = build_filter(filters, media_type="movie")
-    props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "resume", "runtime", "lastplayed", "playcount", "genre", "file", "plot"]
+    props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "resume", "runtime", "lastplayed", "playcount", "genre", "file", "plot", "originaltitle"]
 
     params = {
         "jsonrpc": "2.0", "id": "movies",
@@ -563,7 +563,7 @@ def get_tvshow_items(filters, limit):
     sort_obj = build_sort(filters)
 
     filter_obj = build_filter(filters, media_type="tvshow")
-    props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "episode", "watchedepisodes", "lastplayed", "playcount", "genre", "file", "plot"]
+    props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "episode", "watchedepisodes", "lastplayed", "playcount", "genre", "file", "plot", "originaltitle"]
 
     params = {
         "jsonrpc": "2.0", "id": "tvshows",
@@ -714,7 +714,7 @@ def get_concert_items(filters, limit):
 
     filter_obj = add_rule(build_filter(temp_filters, media_type="movie"), music_rule)
 
-    props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "resume", "runtime", "lastplayed", "playcount", "genre", "file", "plot"]
+    props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "resume", "runtime", "lastplayed", "playcount", "genre", "file", "plot", "originaltitle"]
     params = {
         "jsonrpc": "2.0", "id": "movies",
         "method": "VideoLibrary.GetMovies",
@@ -762,8 +762,8 @@ def get_documentary_items(filters, limit):
     filter_obj_tv = add_rule(build_filter(filters, media_type="tvshow"), doc_rule)
 
     # Batch fetch
-    movie_props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "file", "resume", "runtime", "lastplayed", "plot", "playcount"]
-    tv_props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "episode", "watchedepisodes", "file", "lastplayed", "plot"]
+    movie_props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "file", "resume", "runtime", "lastplayed", "plot", "playcount", "originaltitle"]
+    tv_props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "episode", "watchedepisodes", "file", "lastplayed", "plot", "originaltitle"]
 
     batch_cmds = [
         {
@@ -803,8 +803,8 @@ def get_mixed_items(filters, limit):
     filter_obj_movie = build_filter(filters, media_type="movie")
     filter_obj_tv = build_filter(filters, media_type="tvshow")
 
-    movie_props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "file", "resume", "runtime", "lastplayed", "plot", "playcount"]
-    tv_props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "episode", "watchedepisodes", "file", "lastplayed", "plot"]
+    movie_props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "file", "resume", "runtime", "lastplayed", "plot", "playcount", "originaltitle"]
+    tv_props = ["title", "thumbnail", "art", "dateadded", "rating", "year", "episode", "watchedepisodes", "file", "lastplayed", "plot", "originaltitle"]
 
     batch_cmds = [
         {
@@ -839,23 +839,60 @@ def get_mixed_items(filters, limit):
 
     return sort_items_locally(items, sort_obj)[:limit]
 
+
+def _t9_match_distance(field_value, search_str):
+    """计算搜索串在目标字段中匹配位置到最近前一个 | 的距离，距离越小越好。"""
+    if not field_value or not search_str:
+        return float('inf')
+    target = field_value if field_value.startswith('|') else '|' + field_value
+    min_dist = float('inf')
+    start = 0
+    while True:
+        pos = target.find(search_str, start)
+        if pos < 0:
+            break
+        pipe_pos = target.rfind('|', 0, pos)
+        dist = pos - pipe_pos - 1 if pipe_pos >= 0 else pos
+        if dist < min_dist:
+            min_dist = dist
+            if min_dist == 0:
+                break
+        start = pos + 1
+    return min_dist
+
+
 def jsonrpc_get_items(filters=None, limit=500):
     media_type = get_filter_val(filters, "filter.mediatype", "all")
+    t9_val = get_filter_val(filters, "filter.t9")
+    t9_active = t9_val is not None and str(t9_val).strip() != "" and not str(t9_val).strip().startswith('|')
 
     log(f"jsonrpc_get_items: type={media_type}, limit={limit}")
 
     if media_type == "电影":
-        return get_movie_items(filters, limit)
+        items = get_movie_items(filters, limit)
     elif media_type == "剧集":
-        return get_tvshow_items(filters, limit)
+        items = get_tvshow_items(filters, limit)
     elif media_type == "系列电影":
-        return get_set_items(filters, limit)
+        items = get_set_items(filters, limit)
     elif media_type == "演唱会":
-        return get_concert_items(filters, limit)
+        items = get_concert_items(filters, limit)
     elif media_type == "纪录片":
-        return get_documentary_items(filters, limit)
+        items = get_documentary_items(filters, limit)
     else:
-        return get_mixed_items(filters, limit)
+        items = get_mixed_items(filters, limit)
+
+    # T9 搜索时按距离稳定排序，距离相同的项保持用户排序
+    if t9_active:
+        raw_t9 = str(t9_val).strip()
+        def _t9_key(item):
+            if item.get("media_type") == "set":
+                field = item.get("plot", "")
+            else:
+                field = item.get("originaltitle", "")
+            return _t9_match_distance(field, raw_t9)
+        items.sort(key=_t9_key)
+
+    return items
 
 def fix_movie_set_poster(items):
     sets_needing_art = []
