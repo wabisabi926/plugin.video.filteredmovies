@@ -20,7 +20,7 @@
         <menu id="kodi.core.main">
             <item library="default_context_menu_hook.py">
                 <label>$ADDON[plugin.video.filteredmovies 32011]</label>
-                <visible>!String.IsEmpty(ListItem.Art(fanart))</visible>
+                <visible>!String.IsEmpty(ListItem.Art(fanart)) + String.IsEqual(Window(home).Property(MFG.SkinID),skin.cpm.estuary.search)</visible>
             </item>
         </menu>
     </extension>

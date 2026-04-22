@@ -781,6 +781,8 @@ def set_rounded():
 def init_skin_properties():
     set_rounded()
     skin_name = get_skin_name()
+    # 1. Set current skin ID as a window property for use in context menu visibility conditions
+    xbmc.executebuiltin('SetProperty(MFG.SkinID,' + xbmc.getSkinDir() + ',home)')
     # 2. Set Progress Bar Color Property
     if skin_name == "estuary":
             xbmc.executebuiltin('SetProperty(MFG.FocusColor,button_focus,home)')
@@ -808,8 +810,7 @@ def init_skin_properties():
     xbmc.executebuiltin('SetProperty(Return_4010,3012,home)')
 
 if __name__ == '__main__':
-    log("Service started")
-    
+    log("Service started")    
     # Start prefetch thread
     threading.Thread(target=warmup_xml_cache).start()
 
@@ -826,11 +827,11 @@ if __name__ == '__main__':
     last_tick_time = time.time()
     
     # 记录上一次的皮肤 ID，用于检测皮肤切换
-    last_skin = get_skin_name()
+    last_skin = xbmc.getSkinDir()
     last_style = xbmcaddon.Addon().getSetting('style') or 'auto'
     while not monitor.abortRequested():
         # 1. 检测皮肤切换
-        current_skin = get_skin_name()
+        current_skin = xbmc.getSkinDir()
         if current_skin != last_skin:
             log(f"Skin changed from {last_skin} to {current_skin}. Re-initializing properties.")
             last_skin = current_skin
