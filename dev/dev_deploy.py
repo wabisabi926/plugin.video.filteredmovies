@@ -5,7 +5,7 @@ import os
 import shutil
 import fnmatch
 
-DEV_REMOTE = False
+DEV_REMOTE = True
 
 SOURCE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if DEV_REMOTE:
@@ -14,7 +14,7 @@ else:
     TARGET_DIR = os.path.join(os.environ.get('APPDATA', ''), 'Kodi', 'addons', 'plugin.video.filteredmovies')
 
 EXCLUDE_DIRS = {'.git', '.github', '.vscode', '.idea', '__pycache__', 'dist', 'test', 'dev'}
-EXCLUDE_FILES = {'*.pyc', '.gitignore', '.DS_Store', 'checklist.md'}
+EXCLUDE_FILES = {'*.pyc', '*.bak', '.gitignore', '.DS_Store', 'checklist.md'}
 
 
 def should_exclude_file(name):

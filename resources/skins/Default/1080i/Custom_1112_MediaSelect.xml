@@ -1,0 +1,450 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    统一字幕/音轨选择器窗口 (ID: 1112)
+    - 顶部 Tab 栏切换字幕/音轨
+    - Python 控制默认聚焦的 Tab
+    - 位置由 Window(Home).Property(MFG.SelectorPosition) 控制
+    - 磨砂玻璃深色背景，可选圆角
+-->
+<window type="dialog" id="1112">
+    <defaultcontrol>100</defaultcontrol>
+    <controls>
+        <control type="group">
+            <right>0</right>
+            <bottom>130</bottom>
+            <width>780</width>
+            <height>415</height>
+            <animation effect="fade" start="0" end="100" time="200">WindowOpen</animation>
+            <animation effect="fade" start="100" end="0" time="200">WindowClose</animation>
+
+            <!-- 位置偏移动画：根据设置属性平移到对应位置 -->
+            <animation effect="slide" end="-570,-250" time="0" condition="String.IsEqual(Window(Home).Property(MFG.SelectorPosition),center)">Conditional</animation>
+            <animation effect="slide" end="-1110,0" time="0" condition="String.IsEqual(Window(Home).Property(MFG.SelectorPosition),bottom_left)">Conditional</animation>
+            <animation effect="slide" end="-20,0" time="0" condition="String.IsEqual(Window(Home).Property(MFG.SelectorPosition),bottom_right)">Conditional</animation>
+            <animation effect="slide" end="-20,-406" time="0" condition="String.IsEqual(Window(Home).Property(MFG.SelectorPosition),top_right)">Conditional</animation>
+            <animation effect="slide" end="-1110,-406" time="0" condition="String.IsEqual(Window(Home).Property(MFG.SelectorPosition),top_left)">Conditional</animation>
+
+            <!-- 背景层：方角样式使用裁掉圆角的版本，圆角样式保留原图 9-slice -->
+            <control type="image">
+                <visible>!String.IsEqual(Window(Home).Property(MFG.UseRounded),true)</visible>
+                <width>100%</width>
+                <height>100%</height>
+                <texture colordiffuse="$INFO[Window(Home).Property(MFG.SelectorBgColor)]">diffuse/dialog_blur_square.png</texture>
+            </control>
+            <control type="image">
+                <visible>String.IsEqual(Window(Home).Property(MFG.UseRounded),true)</visible>
+                <width>100%</width>
+                <height>100%</height>
+                <texture colordiffuse="$INFO[Window(Home).Property(MFG.SelectorBgColor)]">diffuse/dialog_blur_round.png</texture>
+            </control>
+
+            <!-- 底部暗线（玻璃厚度感） -->
+            <control type="image">
+                <left>15</left>
+                <bottom>0</bottom>
+                <width>750</width>
+                <height>1</height>
+                <texture colordiffuse="20000000">colors/fm_white.png</texture>
+            </control>
+
+            <!-- ===== Tab 栏 ===== -->
+            <!-- 字幕 Tab 按钮 -->
+            <control type="button" id="10">
+                <left>0</left>
+                <top>0</top>
+                <width>390</width>
+                <height>48</height>
+                <texturefocus />
+                <texturenofocus />
+                <label></label>
+                <onright>SetFocus(11)</onright>
+                <ondown>SetFocus(100)</ondown>
+            </control>
+            <control type="group">
+                <left>143</left>
+                <top>5</top>
+                <width>104</width>
+                <height>38</height>
+                <control type="image">
+                    <left>0</left>
+                    <top>0</top>
+                    <width>38</width>
+                    <height>38</height>
+                    <visible>String.IsEqual(Window(Home).Property(MFG.SelectorTab),subtitle)</visible>
+                    <texture colordiffuse="FFFFFFFF">common/fm_tab_subtitle.png</texture>
+                </control>
+                <control type="image">
+                    <left>0</left>
+                    <top>0</top>
+                    <width>38</width>
+                    <height>38</height>
+                    <visible>!String.IsEqual(Window(Home).Property(MFG.SelectorTab),subtitle)</visible>
+                    <texture colordiffuse="AAFFFFFF">common/fm_tab_subtitle.png</texture>
+                </control>
+                <control type="label">
+                    <left>48</left>
+                    <top>0</top>
+                    <width>56</width>
+                    <height>38</height>
+                    <label>字幕</label>
+                    <font>font12</font>
+                    <textcolor>FFFFFFFF</textcolor>
+                    <align>center</align>
+                    <aligny>center</aligny>
+                    <visible>String.IsEqual(Window(Home).Property(MFG.SelectorTab),subtitle)</visible>
+                </control>
+                <control type="label">
+                    <left>48</left>
+                    <top>0</top>
+                    <width>56</width>
+                    <height>38</height>
+                    <label>字幕</label>
+                    <font>font12</font>
+                    <textcolor>AAFFFFFF</textcolor>
+                    <align>center</align>
+                    <aligny>center</aligny>
+                    <visible>!String.IsEqual(Window(Home).Property(MFG.SelectorTab),subtitle)</visible>
+                </control>
+            </control>
+            <!-- 音轨 Tab 按钮 -->
+            <control type="button" id="11">
+                <left>390</left>
+                <top>0</top>
+                <width>390</width>
+                <height>48</height>
+                <texturefocus />
+                <texturenofocus />
+                <label></label>
+                <onleft>SetFocus(10)</onleft>
+                <ondown>SetFocus(101)</ondown>
+            </control>
+            <control type="group">
+                <left>533</left>
+                <top>5</top>
+                <width>104</width>
+                <height>38</height>
+                <control type="image">
+                    <left>0</left>
+                    <top>0</top>
+                    <width>38</width>
+                    <height>38</height>
+                    <visible>String.IsEqual(Window(Home).Property(MFG.SelectorTab),audio)</visible>
+                    <texture colordiffuse="FFFFFFFF">common/fm_tab_audio.png</texture>
+                </control>
+                <control type="image">
+                    <left>0</left>
+                    <top>0</top>
+                    <width>38</width>
+                    <height>38</height>
+                    <visible>!String.IsEqual(Window(Home).Property(MFG.SelectorTab),audio)</visible>
+                    <texture colordiffuse="AAFFFFFF">common/fm_tab_audio.png</texture>
+                </control>
+                <control type="label">
+                    <left>48</left>
+                    <top>0</top>
+                    <width>56</width>
+                    <height>38</height>
+                    <label>音轨</label>
+                    <font>font12</font>
+                    <textcolor>FFFFFFFF</textcolor>
+                    <align>center</align>
+                    <aligny>center</aligny>
+                    <visible>String.IsEqual(Window(Home).Property(MFG.SelectorTab),audio)</visible>
+                </control>
+                <control type="label">
+                    <left>48</left>
+                    <top>0</top>
+                    <width>56</width>
+                    <height>38</height>
+                    <label>音轨</label>
+                    <font>font12</font>
+                    <textcolor>AAFFFFFF</textcolor>
+                    <align>center</align>
+                    <aligny>center</aligny>
+                    <visible>!String.IsEqual(Window(Home).Property(MFG.SelectorTab),audio)</visible>
+                </control>
+            </control>
+            <!-- Tab 中间竖分隔线 -->
+            <control type="image">
+                <left>389</left>
+                <top>10</top>
+                <width>1</width>
+                <height>30</height>
+                <texture colordiffuse="30FFFFFF">colors/fm_white.png</texture>
+            </control>
+            <!-- 活动 Tab 底部黄色指示条 -->
+            <control type="image">
+                <visible>String.IsEqual(Window(Home).Property(MFG.SelectorTab),subtitle)</visible>
+                <left>24</left>
+                <top>45</top>
+                <width>342</width>
+                <height>3</height>
+                <texture colordiffuse="FFEB9E17">colors/fm_white.png</texture>
+            </control>
+            <control type="image">
+                <visible>String.IsEqual(Window(Home).Property(MFG.SelectorTab),audio)</visible>
+                <left>414</left>
+                <top>45</top>
+                <width>342</width>
+                <height>3</height>
+                <texture colordiffuse="FFEB9E17">colors/fm_white.png</texture>
+            </control>
+            <!-- Tab 底部分隔线 -->
+            <control type="image">
+                <left>0</left>
+                <top>48</top>
+                <width>780</width>
+                <height>1</height>
+                <texture colordiffuse="30FFFFFF">colors/fm_white.png</texture>
+            </control>
+
+            <!-- ===== 字幕列表 ===== -->
+            <control type="group">
+                <visible>String.IsEqual(Window(Home).Property(MFG.SelectorTab),subtitle)</visible>
+                <left>0</left>
+                <top>49</top>
+                <width>780</width>
+                <height>359</height>
+                <control type="list" id="100">
+                    <left>0</left>
+                    <top>0</top>
+                    <width>780</width>
+                    <height>359</height>
+                    <onup>SetFocus(10)</onup>
+                    <viewtype label="list">list</viewtype>
+                    <pagecontrol>60</pagecontrol>
+                    <scrolltime>0</scrolltime>
+                    <itemlayout height="50">
+                        <!-- 选中状态的圆圈 -->
+                        <control type="image">
+                            <visible>String.IsEqual(ListItem.Property(IsActive),true)</visible>
+                            <left>666</left>
+                            <top>5</top>
+                            <width>40</width>
+                            <height>40</height>
+                            <texture colordiffuse="FFFFFFFF">common/fm_circle_check.png</texture>
+                        </control>
+                        <!-- 未选中状态的圆圈 -->
+                        <control type="image">
+                            <visible>!String.IsEqual(ListItem.Property(IsActive),true)</visible>
+                            <left>666</left>
+                            <top>5</top>
+                            <width>40</width>
+                            <height>40</height>
+                            <texture colordiffuse="88FFFFFF">common/fm_circle.png</texture>
+                        </control>
+                        <!-- 国旗图标 -->
+                        <control type="image">
+                            <left>716</left>
+                            <top>10</top>
+                            <width>54</width>
+                            <height>30</height>
+                            <aspectratio align="center" aligny="center">keep</aspectratio>
+                            <texture>$INFO[ListItem.Thumb]</texture>
+                        </control>
+                        <!-- 普通项 -->
+                        <control type="label">
+                            <left>24</left>
+                            <top>0</top>
+                            <width>630</width>
+                            <height>50</height>
+                            <label>$INFO[ListItem.Label]</label>
+                            <aligny>center</aligny>
+                            <textcolor>BBFFFFFF</textcolor>
+                            <visible>!String.IsEqual(ListItem.Property(IsActive),true)</visible>
+                        </control>
+                        <!-- 当前活动项（高亮色） -->
+                        <control type="label">
+                            <left>24</left>
+                            <top>0</top>
+                            <width>630</width>
+                            <height>50</height>
+                            <label>$INFO[ListItem.Label]</label>
+                            <aligny>center</aligny>
+                            <textcolor>FFEB9E17</textcolor>
+                            <visible>String.IsEqual(ListItem.Property(IsActive),true)</visible>
+                        </control>
+                    </itemlayout>
+                    <focusedlayout height="50">
+                        <control type="image">
+                            <visible>!String.IsEqual(Window(Home).Property(MFG.UseRounded),true)</visible>
+                            <left>0</left>
+                            <width>780</width>
+                            <height>50</height>
+                            <texture colordiffuse="$INFO[Window(home).Property(MFG.FocusColor)]">colors/fm_white.png</texture>
+                        </control>
+                        <control type="image">
+                            <visible>String.IsEqual(Window(Home).Property(MFG.UseRounded),true)</visible>
+                            <left>5</left>
+                            <width>770</width>
+                            <height>50</height>
+                            <texture colordiffuse="$INFO[Window(home).Property(MFG.FocusColor)]">diffuse/dialog_select_round.png</texture>
+                        </control>
+                        <!-- 选中状态的圆圈 -->
+                        <control type="image">
+                            <visible>String.IsEqual(ListItem.Property(IsActive),true)</visible>
+                            <left>666</left>
+                            <top>5</top>
+                            <width>40</width>
+                            <height>40</height>
+                            <texture colordiffuse="FFFFFFFF">common/fm_circle_check.png</texture>
+                        </control>
+                        <!-- 未选中状态的圆圈 -->
+                        <control type="image">
+                            <visible>!String.IsEqual(ListItem.Property(IsActive),true)</visible>
+                            <left>666</left>
+                            <top>5</top>
+                            <width>40</width>
+                            <height>40</height>
+                            <texture colordiffuse="88FFFFFF">common/fm_circle.png</texture>
+                        </control>
+                        <!-- 国旗图标 -->
+                        <control type="image">
+                            <left>716</left>
+                            <top>10</top>
+                            <width>54</width>
+                            <height>30</height>
+                            <aspectratio align="center" aligny="center">keep</aspectratio>
+                            <texture>$INFO[ListItem.Thumb]</texture>
+                        </control>
+                        <control type="label">
+                            <left>24</left>
+                            <top>0</top>
+                            <width>630</width>
+                            <height>50</height>
+                            <label>$INFO[ListItem.Label]</label>
+                            <aligny>center</aligny>
+                            <textcolor>white</textcolor>
+                            <scroll>true</scroll>
+                        </control>
+                    </focusedlayout>
+                </control>
+            </control>
+
+            <!-- ===== 音轨列表 ===== -->
+            <control type="group">
+                <visible>String.IsEqual(Window(Home).Property(MFG.SelectorTab),audio)</visible>
+                <left>0</left>
+                <top>49</top>
+                <width>780</width>
+                <height>359</height>
+                <control type="list" id="101">
+                    <left>0</left>
+                    <top>0</top>
+                    <width>780</width>
+                    <height>359</height>
+                    <onup>SetFocus(11)</onup>
+                    <viewtype label="list">list</viewtype>
+                    <pagecontrol>60</pagecontrol>
+                    <scrolltime>0</scrolltime>
+                    <itemlayout height="50">
+                        <!-- 选中状态的圆圈 -->
+                        <control type="image">
+                            <visible>String.IsEqual(ListItem.Property(IsActive),true)</visible>
+                            <left>666</left>
+                            <top>5</top>
+                            <width>40</width>
+                            <height>40</height>
+                            <texture colordiffuse="FFFFFFFF">common/fm_circle_check.png</texture>
+                        </control>
+                        <!-- 未选中状态的圆圈 -->
+                        <control type="image">
+                            <visible>!String.IsEqual(ListItem.Property(IsActive),true)</visible>
+                            <left>666</left>
+                            <top>5</top>
+                            <width>40</width>
+                            <height>40</height>
+                            <texture colordiffuse="88FFFFFF">common/fm_circle.png</texture>
+                        </control>
+                        <!-- 国旗图标 -->
+                        <control type="image">
+                            <left>716</left>
+                            <top>10</top>
+                            <width>54</width>
+                            <height>30</height>
+                            <aspectratio align="center" aligny="center">keep</aspectratio>
+                            <texture>$INFO[ListItem.Thumb]</texture>
+                        </control>
+                        <!-- 普通项 -->
+                        <control type="label">
+                            <left>24</left>
+                            <top>0</top>
+                            <width>630</width>
+                            <height>50</height>
+                            <label>$INFO[ListItem.Label]</label>
+                            <aligny>center</aligny>
+                            <textcolor>BBFFFFFF</textcolor>
+                            <visible>!String.IsEqual(ListItem.Property(IsActive),true)</visible>
+                        </control>
+                        <!-- 当前活动项（高亮色） -->
+                        <control type="label">
+                            <left>24</left>
+                            <top>0</top>
+                            <width>630</width>
+                            <height>50</height>
+                            <label>$INFO[ListItem.Label]</label>
+                            <aligny>center</aligny>
+                            <textcolor>FFEB9E17</textcolor>
+                            <visible>String.IsEqual(ListItem.Property(IsActive),true)</visible>
+                        </control>
+                    </itemlayout>
+                    <focusedlayout height="50">
+                        <control type="image">
+                            <visible>!String.IsEqual(Window(Home).Property(MFG.UseRounded),true)</visible>
+                            <left>0</left>
+                            <width>780</width>
+                            <height>50</height>
+                            <texture colordiffuse="$INFO[Window(home).Property(MFG.FocusColor)]">colors/fm_white.png</texture>
+                        </control>
+                        <control type="image">
+                            <visible>String.IsEqual(Window(Home).Property(MFG.UseRounded),true)</visible>
+                            <left>5</left>
+                            <width>770</width>
+                            <height>50</height>
+                            <texture colordiffuse="$INFO[Window(home).Property(MFG.FocusColor)]">diffuse/dialog_select_round.png</texture>
+                        </control>
+                        <!-- 选中状态的圆圈 -->
+                        <control type="image">
+                            <visible>String.IsEqual(ListItem.Property(IsActive),true)</visible>
+                            <left>666</left>
+                            <top>5</top>
+                            <width>40</width>
+                            <height>40</height>
+                            <texture colordiffuse="FFFFFFFF">common/fm_circle_check.png</texture>
+                        </control>
+                        <!-- 未选中状态的圆圈 -->
+                        <control type="image">
+                            <visible>!String.IsEqual(ListItem.Property(IsActive),true)</visible>
+                            <left>666</left>
+                            <top>5</top>
+                            <width>40</width>
+                            <height>40</height>
+                            <texture colordiffuse="88FFFFFF">common/fm_circle.png</texture>
+                        </control>
+                        <!-- 国旗图标 -->
+                        <control type="image">
+                            <left>716</left>
+                            <top>10</top>
+                            <width>54</width>
+                            <height>30</height>
+                            <aspectratio align="center" aligny="center">keep</aspectratio>
+                            <texture>$INFO[ListItem.Thumb]</texture>
+                        </control>
+                        <control type="label">
+                            <left>24</left>
+                            <top>0</top>
+                            <width>630</width>
+                            <height>50</height>
+                            <label>$INFO[ListItem.Label]</label>
+                            <aligny>center</aligny>
+                            <textcolor>white</textcolor>
+                            <scroll>true</scroll>
+                        </control>
+                    </focusedlayout>
+                </control>
+            </control>
+
+
+        </control>
+    </controls>
+</window>

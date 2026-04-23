@@ -21,7 +21,7 @@
                 <visible>String.IsEqual(Window(Home).Property(MFG.UseRounded),true)</visible>
                 <width>100%</width>
                 <height>100%</height>
-                <texture colordiffuse="80000000" border="10">diffuse/poster_mask.png</texture>
+                <texture colordiffuse="80000000" border="10">diffuse/poster_mask_round.png</texture>
             </control>
             
             <!-- Title -->

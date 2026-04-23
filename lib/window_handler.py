@@ -773,3 +773,232 @@ class OSDListWindow(xbmcgui.WindowXMLDialog):
         # 如果需要，传递其他动作，或者让基类处理
         super(OSDListWindow, self).onAction(action)
 
+
+# 语言代码（ISO 639-1）→ 国家代码（ISO 3166-1 alpha-2，大写）映射，用于获取国旗图片
+
+
+def _get_flag_path(lang_code):
+    """根据语言代码返回本地国旗图片路径，与 fuse2 皮肤逻辑相同。"""
+    if not lang_code or lang_code in ('unk', 'und', ''):
+        return None
+    import os
+    flags_dir = os.path.join(_ADDON_PATH, 'resources', 'skins', 'Default', 'media', 'flags')
+    code = lang_code.lower()
+    path = os.path.join(flags_dir, f'{code}.png')
+    if os.path.exists(path):
+        return path
+    # 尝试 ISO 639-1 两字母码
+    try:
+        iso2 = xbmc.convertLanguage(lang_code, xbmc.ISO_639_1)
+        if iso2:
+            path2 = os.path.join(flags_dir, f'{iso2.lower()}.png')
+            if os.path.exists(path2):
+                return path2
+    except Exception:
+        pass
+    return None
+
+
+class MediaSelectWindow(xbmcgui.WindowXMLDialog):
+    """统一字幕/音轨选择器窗口（Custom_1112_MediaSelect.xml）。
+
+    用法：
+        w = MediaSelectWindow('Custom_1112_MediaSelect.xml', ADDON_PATH, 'Default', '1080i')
+        w.setInitialTab("subtitle")  # 或 "audio"
+        w.doModal()
+    数据获取和切换逻辑全部在窗口内部处理。
+    """
+
+    def __init__(self, strXMLname, strFallbackPath, strDefaultName, forceFallback='1080i'):
+        super(MediaSelectWindow, self).__init__(strXMLname, strFallbackPath, strDefaultName, forceFallback)
+        self.subtitle_items = []
+        self.audio_items = []
+        self.initial_tab = "subtitle"
+        self.current_tab = "subtitle"
+        self._switching_tab = False
+        # 字幕状态（窗口打开后保持同步）
+        self._sub_current = -1
+        self._sub_enabled = False
+        self._player = None
+        # 音轨状态
+        self._audio_current = -1
+
+    def setInitialTab(self, tab):
+        """在 doModal() 之前调用，设置默认聚焦的 Tab。"""
+        self.initial_tab = tab
+
+    # 保留向后兼容的 setter（不再必须调用）
+    def setSubtitleItems(self, items):
+        self.subtitle_items = items or []
+
+    def setAudioItems(self, items):
+        self.audio_items = items or []
+
+    def setOnSubtitleSelect(self, callback):
+        pass  # 已废弃，内部处理
+
+    def setOnAudioSelect(self, callback):
+        pass  # 已废弃，内部处理
+
+    def onInit(self):
+        from .media_info import get_subtitle_items, get_audio_items
+        self.subtitle_list = self.getControl(100)
+        self.audio_list = self.getControl(101)
+
+        # 拉取数据
+        sub_items, sub_current, sub_enabled, player = get_subtitle_items(suppress_warning=(self.initial_tab == "audio"))
+        audio_items, audio_current = get_audio_items(suppress_warning=(self.initial_tab == "subtitle"))
+
+        self.subtitle_items = sub_items or []
+        self.audio_items = audio_items or []
+        self._sub_current = sub_current if sub_current is not None else -1
+        self._sub_enabled = sub_enabled or False
+        self._player = player
+        self._audio_current = audio_current if audio_current is not None else -1
+
+        log(f"[MediaSelectWindow.onInit] sub_current={self._sub_current}, sub_enabled={self._sub_enabled}, audio_current={self._audio_current}")
+
+        # 填充字幕列表
+        sub_focus = 0
+        for i, item in enumerate(self.subtitle_items):
+            li = xbmcgui.ListItem(label=item["label"])
+            if item.get("is_active"):
+                li.setProperty("IsActive", "true")
+                sub_focus = i
+            flag_path = _get_flag_path(item.get("lang_code", ""))
+            if flag_path:
+                li.setArt({'thumb': flag_path})
+            self.subtitle_list.addItem(li)
+        if self.subtitle_items:
+            self.subtitle_list.selectItem(sub_focus)
+
+        # 填充音轨列表
+        audio_focus = 0
+        for i, item in enumerate(self.audio_items):
+            li = xbmcgui.ListItem(label=item["label"])
+            if item.get("is_active"):
+                li.setProperty("IsActive", "true")
+                audio_focus = i
+            flag_path = _get_flag_path(item.get("lang_code", ""))
+            if flag_path:
+                li.setArt({'thumb': flag_path})
+            self.audio_list.addItem(li)
+        if self.audio_items:
+            self.audio_list.selectItem(audio_focus)
+
+        # 切换到初始 Tab
+        self.current_tab = self.initial_tab
+        xbmc.sleep(50)
+        if self.initial_tab == "subtitle":
+            self.setFocus(self.subtitle_list)
+        else:
+            self.setFocus(self.audio_list)
+
+    def _switch_tab(self, tab):
+        """切换活动 Tab 并将焦点移到对应列表。"""
+        self._switching_tab = True
+        self.current_tab = tab
+        xbmcgui.Window(10000).setProperty("MFG.SelectorTab", tab)
+        xbmc.sleep(50)
+        if tab == "subtitle":
+            self.setFocus(self.subtitle_list)
+        else:
+            self.setFocus(self.audio_list)
+        self._switching_tab = False
+
+    def onClick(self, controlId):
+        if controlId == 10:
+            self._switch_tab("subtitle")
+        elif controlId == 11:
+            self._switch_tab("audio")
+        elif controlId == 100:
+            # 字幕列表选中
+            idx = self.subtitle_list.getSelectedPosition()
+            if 0 <= idx < len(self.subtitle_items):
+                selected = self.subtitle_items[idx]
+                real_index = selected["index"]
+                log(f"[MediaSelectWindow] subtitle clicked idx={idx}, real_index={real_index}, sub_current={self._sub_current}, sub_enabled={self._sub_enabled}")
+                if self._sub_enabled and real_index == self._sub_current:
+                    self._player.showSubtitles(False)
+                    self._sub_enabled = False
+                    from .common import notification
+                    notification("字幕已关闭")
+                    self._update_active(self.subtitle_list, -1)
+                else:
+                    self._player.setSubtitleStream(real_index)
+                    self._player.showSubtitles(True)
+                    self._sub_enabled = True
+                    self._sub_current = real_index
+                    from .common import notification
+                    notification(f"字幕已切换至: {selected['label'].strip()}")
+                    self._update_active(self.subtitle_list, idx)
+            else:
+                self.close()
+        elif controlId == 101:
+            # 音轨列表选中
+            idx = self.audio_list.getSelectedPosition()
+            if 0 <= idx < len(self.audio_items):
+                selected = self.audio_items[idx]
+                real_index = selected["index"]
+                log(f"[MediaSelectWindow] audio clicked idx={idx}, real_index={real_index}, audio_current={self._audio_current}")
+                if real_index == self._audio_current:
+                    from .common import notification
+                    notification("已是当前音轨")
+                else:
+                    xbmc.Player().setAudioStream(real_index)
+                    self._audio_current = real_index
+                    from .common import notification
+                    notification(f"音轨已切换至: {selected['label'].strip()}")
+                    self._update_active(self.audio_list, idx)
+            else:
+                self.close()
+
+    def onAction(self, action):
+        if self._switching_tab:
+            return
+        action_id = action.getId()
+        if action_id in [10, 92]:
+            # 返回/退出键：关闭
+            self.close()
+        elif action_id == 2 and self.current_tab == "subtitle":
+            # 字幕 Tab 按右 → 切换到音轨 Tab
+            self._switch_tab("audio")
+        elif action_id == 1 and self.current_tab == "audio":
+            # 音轨 Tab 按左 → 切换到字幕 Tab
+            self._switch_tab("subtitle")
+        elif action_id == 3:
+            # UP 键：若焦点在 Tab 按钮上，跳到当前列表最底部
+            focused = self.getFocusId()
+            if focused in [10, 11]:
+                if self.current_tab == "subtitle":
+                    count = self.subtitle_list.size()
+                    if count > 0:
+                        self.subtitle_list.selectItem(count - 1)
+                    self.setFocus(self.subtitle_list)
+                else:
+                    count = self.audio_list.size()
+                    if count > 0:
+                        self.audio_list.selectItem(count - 1)
+                    self.setFocus(self.audio_list)
+            # 其他控件的上键交给系统处理
+        elif action_id == 7:
+            # 确定键：由 onClick 处理，这里忽略
+            return
+        elif action_id in [4, 5, 6] or (100 <= action_id <= 107):
+            # 其他方向键/翻页/鼠标：交给控件处理
+            return
+        else:
+            log(f"[MediaSelectWindow] onAction unhandled action_id={action_id}, closing window")
+            self.close()
+
+    def _update_active(self, list_control, active_idx):
+        """更新列表中所有项的 IsActive 属性。"""
+        count = list_control.size()
+        for i in range(count):
+            item = list_control.getListItem(i)
+            item.setProperty("IsActive", "true" if i == active_idx else "")
+
+    def close(self):
+        xbmcgui.Window(10000).clearProperty("MFG.SelectorTab")
+        super(MediaSelectWindow, self).close()
+

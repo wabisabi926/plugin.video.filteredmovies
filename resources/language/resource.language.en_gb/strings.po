@@ -113,3 +113,39 @@ msgstr ""
 msgctxt "#32025"
 msgid "When enabled, starting an episode or a video file from a folder will automatically fill and sort the current playlist with the full season or all videos in that folder. For scraped TV shows, misplaced or out-of-order episodes are also corrected. Up to 50 items before and 50 after the current item are kept."
 msgstr ""
+
+msgctxt "#32026"
+msgid "Media selector position"
+msgstr ""
+
+msgctxt "#32027"
+msgid "Set the screen position where the subtitle/audio selector appears"
+msgstr ""
+
+msgctxt "#32028"
+msgid "Bottom right"
+msgstr ""
+
+msgctxt "#32029"
+msgid "Bottom left"
+msgstr ""
+
+msgctxt "#32030"
+msgid "Top right"
+msgstr ""
+
+msgctxt "#32031"
+msgid "Top left"
+msgstr ""
+
+msgctxt "#32032"
+msgid "Center"
+msgstr ""
+
+msgctxt "#32033"
+msgid "Media selector background opacity"
+msgstr ""
+
+msgctxt "#32034"
+msgid "Adjust subtitle/audio selector background opacity (0-100)."
+msgstr ""

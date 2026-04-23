@@ -436,222 +436,9 @@ def set_subtitle(index_str):
     except Exception as e:
         log(f"Error setting subtitle: {e}")
 
-def get_subtitle_items(suppress_warning=False):
-    log("get_subtitle_items function started")
-    player = xbmc.Player()
-    if not player.isPlaying():
-        log("Player is not playing")
-        return None, None, None, None
-
-    try:
-        log("Fetching subtitle info via JSON-RPC")
-        
-        streams = []
-        current_stream = {}
-        is_enabled = False
-        
-        # Combined request for all properties
-        try:
-            req_str = json.dumps({
-                "jsonrpc": "2.0", "method": "Player.GetProperties", 
-                "params": {"playerid": 1, "properties": ["subtitles", "subtitleenabled", "currentsubtitle"]}, "id": 1
-            })
-            resp_str = xbmc.executeJSONRPC(req_str)
-            r = json.loads(resp_str)
-            
-            if 'result' in r: 
-                result = r['result']
-                streams = result.get('subtitles', [])
-                current_stream = result.get('currentsubtitle', {})
-                is_enabled = result.get('subtitleenabled', False)
-            else:
-                log(f"JSON-RPC subtitles failed. Response: {resp_str}")
-                raise Exception("subtitles property failed")
-        except:
-            log("JSON-RPC subtitles exception, using fallback for streams")
-            # Fallback for streams list
-            avail_streams = player.getAvailableSubtitleStreams()
-            for i, name in enumerate(avail_streams):
-                streams.append({
-                    "index": i,
-                    "name": name,
-                    "language": "unk"
-                })
-        for itm in streams:
-            log(f"{itm['language']} {itm['name']}")
-        
-        if not streams:
-            if not suppress_warning:
-                notification("没有可用的字幕流")
-                
-            return None, None, None, None
-
-        # Prepare items
-        display_items = []
-        
-        current_index = current_stream.get('index') if is_enabled else -1
-        
-        # First pass: Collect all items with metadata
-        raw_items = []
-        for s in streams:
-            idx = s.get('index')
-            lang_code = s.get('language', 'unk')
-            name = s.get('name', '')
-            
-            # Language translation
-            lang_map = {
-                'ukr': '乌克兰语', 'uk': '乌克兰语',
-                'ice': '冰岛语', 'isl': '冰岛语', 'is': '冰岛语',
-                'eng': '英语', 'en': '英语',
-                'chi': '中文', 'zho': '中文', 'zh': '中文', 'chn': '中文',
-                'jpn': '日语', 'ja': '日语',
-                'kor': '韩语', 'ko': '韩语',
-                'rus': '俄语', 'ru': '俄语',
-                'fre': '法语', 'fra': '法语', 'fr': '法语',
-                'ger': '德语', 'deu': '德语', 'de': '德语',
-                'spa': '西班牙语', 'es': '西班牙语',
-                'ita': '意大利语', 'it': '意大利语',
-                'por': '葡萄牙语', 'pt': '葡萄牙语',
-                'tha': '泰语', 'th': '泰语',
-                'vie': '越南语', 'vi': '越南语',
-                'ind': '印尼语', 'id': '印尼语',
-                'dan': '丹麦语', 'da': '丹麦语',
-                'fin': '芬兰语', 'fi': '芬兰语',
-                'dut': '荷兰语', 'nld': '荷兰语', 'nl': '荷兰语',
-                'nor': '挪威语', 'no': '挪威语',
-                'swe': '瑞典语', 'sv': '瑞典语',
-                'ara': '阿拉伯语', 'ar': '阿拉伯语',
-                'hrv': '克罗地亚语', 'hr': '克罗地亚语',
-                'ces': '捷克语', 'cze': '捷克语', 'cs': '捷克语',
-                'ell': '希腊语', 'gre': '希腊语', 'el': '希腊语',
-                'heb': '希伯来语', 'he': '希伯来语',
-                'hun': '匈牙利语', 'hu': '匈牙利语',
-                'ron': '罗马尼亚语', 'rum': '罗马尼亚语', 'ro': '罗马尼亚语',
-                'tur': '土耳其语', 'tr': '土耳其语',
-                'bul': '保加利亚语', 'bg': '保加利亚语',
-                'msa': '马来语', 'may': '马来语', 'ms': '马来语',
-                'pol': '波兰语', 'pl': '波兰语',
-                'tgl': '塔加洛语', 'tl': '塔加洛语', 'fil': '菲律宾语',
-                'eus': '巴斯克语', 'baq': '巴斯克语', 'eu': '巴斯克语', 'basque': '巴斯克语',
-                'cat': '加泰罗尼亚语', 'ca': '加泰罗尼亚语', 'catalan': '加泰罗尼亚语',
-                'glg': '加利西亚语', 'gl': '加利西亚语', 'gallegan': '加利西亚语',
-                'unk': '未知', '': '未知'
-            }
-            
-            lang_name = lang_map.get(lang_code.lower())
-            if not lang_name:
-                try:
-                    lang_name = xbmc.convertLanguage(lang_code, xbmc.ENGLISH_NAME)
-                except:
-                    lang_name = lang_code
-            
-            if not lang_name: lang_name = "未知"
-            
-            # Build label
-            label = f"{idx + 1:>3}. {lang_name}"
-            
-            if name and name.lower() != lang_name.lower() and name.lower() != lang_code.lower():
-                # Handle Chinese variations and other keywords
-                import re
-                replacements = [
-                    (r'Chinese\s*[\(\[\{]?Simplified[\)\]\}]?', '简体'),
-                    (r'Chinese\s*[\-\.]?\s*Simplified', '简体'),
-                    (r'Simplified\s*Chinese', '简体'),
-                    (r'Traditional\s*Chinese', '繁体'),
-                    (r'Chinese\s*[\(\[\{]?Traditional[\)\]\}]?', '繁体'),
-                    (r'Chinese\s*[\-\.]?\s*Traditional', '繁体'),
-                    (r'Chi\s*\(Simp\)', '简体'),
-                    (r'Chi\s*\(Trad\)', '繁体'),
-                    (r'Simplified', '简体'),
-                    (r'Traditional', '繁体'),
-                    (r'Mandarin', '国语'),
-                    (r'Cantonese', '粤语')
-                ]
-                for pattern, repl in replacements:
-                    name = re.sub(pattern, repl, name, flags=re.IGNORECASE)
-
-                # 尝试翻译 name 中的第一部分 (通常是语言全称)
-                parts = name.split('-')
-                first_part = parts[0].strip()
-                
-                # 简单的反向查找或直接映射
-                translated_first_part = None
-                # 遍历 lang_map 查找 value 对应的 key (这里不太准确，因为 map 是 code->name)
-                # 我们直接尝试用 lang_map 匹配 first_part (假设它是英文全称或代码)
-                
-                # 扩展 lang_map 以包含常见的英文全称
-                lang_map_extended = lang_map.copy()
-                lang_map_extended.update({
-                    'english': '英语', 'chinese': '中文', 'japanese': '日语', 'korean': '韩语',
-                    'russian': '俄语', 'french': '法语', 'german': '德语', 'spanish': '西班牙语',
-                    'italian': '意大利语', 'portuguese': '葡萄牙语', 'thai': '泰语', 'vietnamese': '越南语',
-                    'indonesian': '印尼语', 'danish': '丹麦语', 'finnish': '芬兰语', 'dutch': '荷兰语',
-                    'norwegian': '挪威语', 'swedish': '瑞典语', 'arabic': '阿拉伯语', 'croatian': '克罗地亚语',
-                    'czech': '捷克语', 'greek': '希腊语', 'hebrew': '希伯来语', 'hungarian': '匈牙利语',
-                    'romanian': '罗马尼亚语', 'turkish': '土耳其语', 'bulgarian': '保加利亚语', 'malay': '马来语',
-                    'polish': '波兰语', 'tagalog': '塔加洛语', 'filipino': '菲律宾语',
-                    'ukrainian': '乌克兰语', 'icelandic': '冰岛语'
-                })
-                
-                if first_part.lower() in lang_map_extended:
-                    translated_first_part = lang_map_extended[first_part.lower()]
-                    # 替换第一部分
-                    parts[0] = translated_first_part
-                    name = "-".join(parts)
-                
-                label += f"-{name}"
-            
-            # Add flags
-            flags = []
-            if s.get('isforced'): flags.append("强制")
-            if s.get('isimpaired'): flags.append("解说")
-            if s.get('isdefault'): flags.append("默认")
-            
-            if name and ('commentary' in name.lower() or '解说' in name or 'description' in name.lower()):
-                flags.append("解说字幕")
-            
-            if flags:
-                label += f" ({', '.join(flags)})"
-            
-            # Determine sort properties
-            is_chinese = lang_code.lower() in ['chi', 'zho', 'zh', 'chn']
-            # Check for external subtitles based on name
-            is_external = '（外挂）' in name
-            
-            raw_items.append({
-                "label": label,
-                "index": idx,
-                "is_active": (is_enabled and idx == current_index),
-                "is_chinese": is_chinese,
-                "is_external": is_external,
-                "original_order": idx
-            })
-
-        # Sort items: External first, then Chinese, then others. Stable sort preserves original order within groups.
-        # Key: (not is_external, not is_chinese, original_order)
-        # False < True, so 'not True' (False) comes first.
-        raw_items.sort(key=lambda x: (not x['is_external'], not x['is_chinese'], x['original_order']))
-        
-        # Convert to display items
-        display_items = []
-        for item in raw_items:
-            label = item["label"]
-            if item["is_active"]:
-                label = f"✓ {label}"
-            else:
-                label = f"    {label}"
-            display_items.append({"label": label, "index": item["index"], "is_active": item["is_active"]})
-        
-        return display_items, current_index, is_enabled, player
-
-    except Exception as e:
-        log(f"Error in get_subtitle_items: {e}")
-        notification(f"获取字幕出错: {e}", sound=True)
-        
-        return None, None, None, None
-
 def populate_subtitle_list():
     log("populate_subtitle_list function started")
+    from lib.media_info import get_subtitle_items
     display_items, current_index, is_enabled, player = get_subtitle_items(suppress_warning=True)
     
     # Try to find the control in VideoOSD (12901)
@@ -694,268 +481,72 @@ def populate_subtitle_list():
             pass
     log("OSD control 80000 not found in windows 12901")
 
+def open_media_selector(initial_tab):
+    """打开统一字幕/音轨选择器，initial_tab 为 'subtitle' 或 'audio'。"""
+    from lib import window_handler
+    position = ADDON.getSetting('osd_selector_position') or 'center'
+    valid_positions = {'top_left', 'top_right', 'center', 'bottom_left', 'bottom_right'}
+    if position not in valid_positions:
+        position = 'center'
+    xbmcgui.Window(10000).setProperty("MFG.SelectorPosition", position)
+    raw_value = ADDON.getSetting('osd_selector_bg_opacity') or '90'
+    try:
+        percent = int(raw_value)
+    except Exception:
+        percent = 90
+    percent = max(0, min(100, percent))
+    alpha = int(round((percent / 100.0) * 255))
+    xbmcgui.Window(10000).setProperty("MFG.SelectorBgColor", '{:02X}FFFFFF'.format(alpha))
+    xbmcgui.Window(10000).setProperty("MFG.SelectorTab", initial_tab)
+    w = window_handler.MediaSelectWindow('Custom_1112_MediaSelect.xml', ADDON_PATH, 'Default', '1080i')
+    w.setInitialTab(initial_tab)
+    w.doModal()
+    del w
+
+
 def select_subtitle():
     log("select_subtitle function started")
-    # set_skin_properties() moved to service
-    display_items, current_index, is_enabled, player = get_subtitle_items()
-    
-    if not display_items:
-        return
-
-    # Use custom window
-    log("Opening custom window")
-    from lib import window_handler
-    w = window_handler.DialogSelectWindow('Custom_1112_SubtitleSelect.xml', ADDON_PATH, 'Default', '1080i')
-    w.setItems(display_items)
-    w.doModal()
-    log("Window closed")
-    
-    ret_index = w.selected_index
-    del w
-    
-    if ret_index == -1:
-        log("Selection cancelled")
-        return # Cancelled
-        
-    # Find the selected item in our list
-    # The window returns the index in the list, so we map it back
-    if ret_index < len(display_items):
-        selected_item = display_items[ret_index]
-        real_index = selected_item["index"]
-        log(f"Selected index: {real_index}")
-        
-        # Toggle off if clicking the currently active subtitle
-        if is_enabled and real_index == current_index:
-            player.showSubtitles(False)
-            notification("字幕已关闭")
-            
-        else:
-            player.setSubtitleStream(real_index)
-            player.showSubtitles(True)
-            notification(f"字幕已切换至: {selected_item['label'].strip()}")
+    open_media_selector("subtitle")
 
 
 def open_osd_subtitle_list():
-    # set_skin_properties() moved to service
+    from lib.media_info import get_subtitle_items
     display_items, current_index, is_enabled, player = get_subtitle_items()
     if not display_items:
         return
 
     from lib import window_handler
-    # Use the new XML
     w = window_handler.OSDListWindow('Custom_1113_OSDSubtitleList.xml', ADDON_PATH, 'Default', '1080i')
     w.setItems(display_items)
-    
+
     def on_select(item):
         real_index = item["index"]
-        # Call set_subtitle logic directly here to avoid circular dependency or re-opening
         try:
-            player = xbmc.Player()
+            _player = xbmc.Player()
             if is_enabled and real_index == current_index:
-                 player.showSubtitles(False)
-                 notification("字幕已关闭")
+                _player.showSubtitles(False)
+                notification("字幕已关闭")
             else:
-                 player.setSubtitleStream(real_index)
-                 player.showSubtitles(True)
-                 notification(f"字幕已切换至: {item['label'].strip()}")
-            
-            # Close VideoOSD to hide the list and return to video
-            # xbmc.executebuiltin('Dialog.Close(VideoOSD)')
+                _player.setSubtitleStream(real_index)
+                _player.showSubtitles(True)
+                notification(f"字幕已切换至: {item['label'].strip()}")
             xbmcgui.Window(10000).setProperty("OSDSubtitleListOpen", "true")
         except:
             pass
 
     w.setCallback(on_select)
-    
-    # Set property to hide OSD list
     xbmcgui.Window(10000).setProperty("OSDSubtitleListOpen", "true")
-    # Also try to clear the OSD list visually
-    # try:
-    #     xbmcgui.Window(12901).getControl(80000).reset()
-    # except:
-    #     pass
-
     w.doModal()
-    
-    # Clear property when closed
-    # xbmcgui.Window(10000).clearProperty("OSDSubtitleListOpen")
     del w
-
-def get_audio_items(suppress_warning=False):
-    try:
-        json_query = {
-            "jsonrpc": "2.0",
-            "method": "Player.GetProperties",
-            "params": {
-                "playerid": 1,
-                "properties": ["audiostreams", "currentaudiostream"]
-            },
-            "id": 1
-        }
-        json_response = xbmc.executeJSONRPC(json.dumps(json_query))
-        response = json.loads(json_response)
-        
-        if 'result' not in response:
-            return None, -1
-
-        streams = response['result'].get('audiostreams', [])
-        current_stream = response['result'].get('currentaudiostream', {})
-        
-        if not streams:
-            if not suppress_warning:
-                notification("没有可用的音轨")
-            return None, -1
-
-        # Prepare items
-        display_items = []
-        current_index = current_stream.get('index', -1)
-        
-        for s in streams:
-            idx = s.get('index')
-            lang_code = s.get('language', 'unk')
-            name = s.get('name', '')
-            channels = s.get('channels', 0)
-            codec = s.get('codec', '')
-            
-            # Language translation (reuse map or simplify)
-            lang_map = {
-                'ukr': '乌克兰语', 'uk': '乌克兰语',
-                'ice': '冰岛语', 'isl': '冰岛语', 'is': '冰岛语',
-                'eng': '英语', 'en': '英语',
-                'chi': '中文', 'zho': '中文', 'zh': '中文', 'chn': '中文',
-                'jpn': '日语', 'ja': '日语',
-                'kor': '韩语', 'ko': '韩语',
-                'rus': '俄语', 'ru': '俄语',
-                'fre': '法语', 'fra': '法语', 'fr': '法语',
-                'ger': '德语', 'deu': '德语', 'de': '德语',
-                'spa': '西班牙语', 'es': '西班牙语',
-                'ita': '意大利语', 'it': '意大利语',
-                'por': '葡萄牙语', 'pt': '葡萄牙语',
-                'tha': '泰语', 'th': '泰语',
-                'vie': '越南语', 'vi': '越南语',
-                'ind': '印尼语', 'id': '印尼语',
-                'dan': '丹麦语', 'da': '丹麦语',
-                'fin': '芬兰语', 'fi': '芬兰语',
-                'dut': '荷兰语', 'nld': '荷兰语', 'nl': '荷兰语',
-                'nor': '挪威语', 'no': '挪威语',
-                'swe': '瑞典语', 'sv': '瑞典语',
-                'ara': '阿拉伯语', 'ar': '阿拉伯语',
-                'hrv': '克罗地亚语', 'hr': '克罗地亚语',
-                'ces': '捷克语', 'cze': '捷克语', 'cs': '捷克语',
-                'ell': '希腊语', 'gre': '希腊语', 'el': '希腊语',
-                'heb': '希伯来语', 'he': '希伯来语',
-                'hun': '匈牙利语', 'hu': '匈牙利语',
-                'ron': '罗马尼亚语', 'rum': '罗马尼亚语', 'ro': '罗马尼亚语',
-                'tur': '土耳其语', 'tr': '土耳其语',
-                'bul': '保加利亚语', 'bg': '保加利亚语',
-                'msa': '马来语', 'may': '马来语', 'ms': '马来语',
-                'pol': '波兰语', 'pl': '波兰语',
-                'tgl': '塔加洛语', 'tl': '塔加洛语', 'fil': '菲律宾语',
-                'eus': '巴斯克语', 'baq': '巴斯克语', 'eu': '巴斯克语', 'basque': '巴斯克语',
-                'cat': '加泰罗尼亚语', 'ca': '加泰罗尼亚语', 'catalan': '加泰罗尼亚语',
-                'glg': '加利西亚语', 'gl': '加利西亚语', 'gallegan': '加利西亚语',
-                'unk': '未知', '': '未知'
-            }
-            
-            lang_name = lang_map.get(lang_code.lower())
-            if not lang_name:
-                try:
-                    lang_name = xbmc.convertLanguage(lang_code, xbmc.ENGLISH_NAME)
-                except:
-                    lang_name = lang_code
-            if not lang_name: lang_name = "未知"
-
-            # Format label: "1. 英语 - DTS-HD MA 5.1"
-            
-            # Simplify codec name for display if needed
-            display_codec = codec.upper()
-            if 'AC3' in name.upper(): display_codec = 'AC3'
-            elif 'DTS' in name.upper(): display_codec = 'DTS'
-            elif 'AAC' in name.upper(): display_codec = 'AAC'
-            
-            # Channel layout
-            ch_str = f"{channels}ch"
-            if channels == 6: ch_str = "5.1"
-            elif channels == 2: ch_str = "2.0"
-            elif channels == 8: ch_str = "7.1"
-            
-            label = f"{idx + 1:>3}. {lang_name}"
-            details = []
-            if name:
-                details.append(name)
-            else:
-                details.append(f"{display_codec} {ch_str}")
-                
-            if s.get('isdefault'): details.append("默认")
-            if s.get('isimpaired'): details.append("解说")
-            
-            if details:
-                label += f" - {' '.join(details)}"
-
-            # Determine sort priority
-            # 0: Chinese, 1: English, 2: Others
-            sort_priority = 2
-            if lang_code.lower() in ['chi', 'zho', 'zh', 'chn']:
-                sort_priority = 0
-            elif lang_code.lower() in ['eng', 'en']:
-                sort_priority = 1
-
-            display_items.append({
-                "label": label,
-                "index": idx,
-                "is_active": (idx == current_index),
-                "sort_priority": sort_priority,
-                "original_order": idx
-            })
-            
-        # Sort items: Chinese first, then English, then others. Stable sort preserves original order within groups.
-        display_items.sort(key=lambda x: (x['sort_priority'], x['original_order']))
-        
-        # Add checkmark to active item
-        for item in display_items:
-            if item['is_active']:
-                item['label'] = f"✓ {item['label']}"
-            else:
-                item['label'] = f"    {item['label']}"
-
-        return display_items, current_index
-    except Exception as e:
-        log(f"Error in get_audio_items: {e}")
-        if not suppress_warning:
-            notification(f"获取音轨出错: {e}", sound=True)
-        return None, -1
 
 def select_audio():
-    # set_skin_properties() moved to service
-    display_items, current_index = get_audio_items()
-    
-    if not display_items:
-        return
+    log("select_audio function started")
+    open_media_selector("audio")
 
-    # Use custom window
-    from lib import window_handler
-    w = window_handler.DialogSelectWindow('Custom_1114_AudioSelect.xml', ADDON_PATH, 'Default', '1080i')
-    w.setItems(display_items)
-    w.doModal()
-    
-    ret_index = w.selected_index
-    del w
-    
-    if ret_index == -1:
-        return
-        
-    if ret_index < len(display_items):
-        selected_item = display_items[ret_index]
-        real_index = selected_item["index"]
-        
-        if real_index == current_index:
-            notification("已是当前音轨")
-        else:
-            xbmc.Player().setAudioStream(real_index)
-            notification(f"音轨已切换至: {selected_item['label'].strip()}")
 
 def populate_audio_list():
     log("populate_audio_list function started")
+    from lib.media_info import get_audio_items
     display_items, current_index = get_audio_items(suppress_warning=True)
     
     # Try to find the control in VideoOSD (12901)
@@ -998,32 +589,29 @@ def populate_audio_list():
     log("OSD control 80001 not found in windows 12901")
 
 def open_osd_audio_list():
-    # set_skin_properties() moved to service
+    from lib.media_info import get_audio_items
     display_items, current_index = get_audio_items()
     if not display_items:
         return
 
     from lib import window_handler
-    # Use new XML for audio list
     w = window_handler.OSDListWindow('Custom_1115_OSDAudioList.xml', ADDON_PATH, 'Default', '1080i')
     w.setItems(display_items)
-    
+
     def on_select(item):
         real_index = item["index"]
         try:
-            player = xbmc.Player()
+            _player = xbmc.Player()
             if real_index == current_index:
-                 notification("已是当前音轨")
+                notification("已是当前音轨")
             else:
-                 player.setAudioStream(real_index)
-                 notification(f"音轨已切换至: {item['label'].strip()}")
-            
+                _player.setAudioStream(real_index)
+                notification(f"音轨已切换至: {item['label'].strip()}")
             xbmcgui.Window(10000).setProperty("OSDAudioListOpen", "true")
         except:
             pass
 
     w.setCallback(on_select)
-    
     xbmcgui.Window(10000).setProperty("OSDAudioListOpen", "true")
     w.doModal()
     del w
