@@ -36,7 +36,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="打印 Kodi 当前播放视频的字幕/音轨 JSON-RPC 原始返回"
     )
-    parser.add_argument("--host", default="192.168.50.79", help="Kodi 主机地址")
+    parser.add_argument("--host", default="127.0.0.1", help="Kodi 主机地址")
     parser.add_argument("--port", type=int, default=8080, help="Kodi Web 端口")
     parser.add_argument("--user", default="", help="Kodi Web 用户名（可选）")
     parser.add_argument("--password", default="", help="Kodi Web 密码（可选）")
