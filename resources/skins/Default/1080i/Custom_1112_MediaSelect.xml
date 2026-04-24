@@ -202,14 +202,14 @@
             <control type="group">
                 <visible>String.IsEqual(Window(Home).Property(MFG.SelectorTab),subtitle)</visible>
                 <left>0</left>
-                <top>49</top>
+                <top>52</top>
                 <width>780</width>
-                <height>359</height>
+                <height>356</height>
                 <control type="list" id="100">
                     <left>0</left>
                     <top>0</top>
                     <width>780</width>
-                    <height>359</height>
+                    <height>356</height>
                     <onup>SetFocus(10)</onup>
                     <viewtype label="list">list</viewtype>
                     <pagecontrol>60</pagecontrol>
@@ -325,14 +325,14 @@
             <control type="group">
                 <visible>String.IsEqual(Window(Home).Property(MFG.SelectorTab),audio)</visible>
                 <left>0</left>
-                <top>49</top>
+                <top>52</top>
                 <width>780</width>
-                <height>359</height>
+                <height>356</height>
                 <control type="list" id="101">
                     <left>0</left>
                     <top>0</top>
                     <width>780</width>
-                    <height>359</height>
+                    <height>356</height>
                     <onup>SetFocus(11)</onup>
                     <viewtype label="list">list</viewtype>
                     <pagecontrol>60</pagecontrol>
