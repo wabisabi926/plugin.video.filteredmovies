@@ -166,7 +166,7 @@ def get_directory_playlist_files(current_file):
         {
             "directory": parent_dir,
             "media": "video",
-            "properties": ["file", "filetype", "title"],
+            "properties": ["file", "title"],
         },
     ) or {}
     files = result.get("files") or []
