@@ -127,6 +127,7 @@ def get_active_video_playlist_state():
         "episode": current_item.get("episode"),
         "showtitle": current_item.get("showtitle") or "",
         "title": current_item.get("title") or "",
+        "type": current_item.get("type") or "",
     }
 
 def get_playlist_files(playlist_id):
@@ -247,6 +248,10 @@ def _autofill_playlist_for_current_video():
 
     state = get_active_video_playlist_state()
     if not state:
+        return
+
+    # 已刮削电影不补充/修正播放列表
+    if state.get("type") == "movie":
         return
 
     current_file = state.get("file") or ""
