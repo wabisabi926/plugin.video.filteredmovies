@@ -82,29 +82,13 @@ msgctxt "#32017"
 msgid "When enabled, movie sets can be searched by T9/initials. After toggling this option, enter 000000 (six zeros) in T9 input to manually rebuild or clean up the index."
 msgstr "启用后可通过T9/首字母搜索系列电影,但是搜索索引会添加到系列电影介绍里，在某些皮肤上可能不太美观。切换开关后需要在T9输入000000（六个0）以手动清理或创建一次索引。"
 
-msgctxt "#32018"
-msgid "Search index field"
-msgstr "搜索索引字段"
-
-msgctxt "#32019"
-msgid "Which database field to store and match the T9 search index. originaltitle is the default; sorttitle can be used as an alternative if originaltitle is needed for other purposes."
-msgstr "用于存储和匹配T9搜索索引的数据库字段。默认使用originaltitle；如果originaltitle需要用于其他用途，可改用sorttitle。"
-
-msgctxt "#32020"
-msgid "originaltitle"
-msgstr "originaltitle（原始标题）"
-
-msgctxt "#32021"
-msgid "sorttitle"
-msgstr "sorttitle（排序标题）"
-
 msgctxt "#32022"
 msgid "Auto write search index"
 msgstr "自动写入搜索索引"
 
 msgctxt "#32023"
-msgid "When enabled, the plugin will automatically write T9 search index data to the selected search field for movies and TV shows."
-msgstr "启用后，插件会自动将T9搜索索引数据写入所选的搜索字段中（电影和剧集）。"
+msgid "When enabled, the plugin will automatically write T9 search index data to the original titles of movies and TV shows."
+msgstr "启用后，插件会自动将T9搜索索引数据写入电影和剧集的原始标题。"
 
 msgctxt "#32024"
 msgid "Autofill/fix playlist for current episode or folder"
@@ -149,3 +133,11 @@ msgstr "字幕/音轨选择器背景不透明度"
 msgctxt "#32034"
 msgid "Adjust subtitle/audio selector background opacity (0-100)."
 msgstr "调整字幕/音轨选择器背景不透明度（0-100）。"
+
+msgctxt "#32035"
+msgid "Auto-load external subtitles for ISO files"
+msgstr "自动加载 ISO 外挂字幕"
+
+msgctxt "#32036"
+msgid "When enabled, automatically load matching external subtitles from the ISO file's folder when playback starts. Changes take effect the next time playback starts."
+msgstr "启用后，播放 ISO 视频时自动加载同目录下与 ISO 文件名匹配的外挂字幕。更改在下次开始播放时生效。"
